@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
   <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-C++%20%2F%20Rust-orange.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Functional v0 stage">
+  <img src="https://img.shields.io/badge/Stage-Established%20v0-brightgreen.svg" alt="Established v0 stage">
 </p>
 
 ---
@@ -25,11 +25,12 @@ By integrating state-of-the-art solvers like MuJoCo or NVIDIA PhysX, it provides
 
 ### Key Features:
 * 📐 **Kinematic Validation (v0):** real forward kinematics and joint-limit checking over a (documented-partial) URDF subset - see "Honesty check" below for exactly what runs today.
+* 🔒 **Real v0 - Limit-Aware FK:** `fk-checked` refuses to compute a world-frame pose for a joint position outside its declared URDF limit, backed by a real, reusable joint-limits corpus and regression tests for both boundaries and wildly out-of-range inputs - closing the gap where plain `fk` would silently report a physically-unreachable pose.
 * 🏗️ **URDF to Physics (v0, partial):** reads real `<joint>` elements (type/origin/axis/limit) from a URDF file into a chain. *Not yet real:* collision mesh generation - that's still the "physics" half of this feature.
 * ⚡ **Real-Time Performance (planned):** parallelized solving for multi-robot workspaces - depends on a real physics-engine integration existing first.
 * 🌡️ **Thermal Simulation (planned):** experimental support for emulating heat dissipation in tool heads (T12/Laser).
 
-**Honesty check - what actually runs today:** `fk --urdf PATH --joints "j1=0.5,..."` computes real per-joint world-frame positions by chaining URDF joint transforms; `validate-limits --urdf PATH --joints "..."` reports real out-of-range joints. Both are pure kinematics - no rigid-body dynamics, no contact forces, no MuJoCo/PhysX solver is wired in yet, and the URDF reader only supports a single serial chain (see `urdf.rs`'s own module docs for why). See [`CHANGELOG.md`](CHANGELOG.md) for exactly what shipped, and the Roadmap below for what's still ahead.
+**Honesty check - what actually runs today:** `fk --urdf PATH --joints "j1=0.5,..."` computes real per-joint world-frame positions by chaining URDF joint transforms, regardless of whether a position is within its declared limit; `fk-checked` runs the same computation but checks every position against `validate-limits`'s real limit check FIRST, refusing to compute (or report) a pose at all if anything is out of range; `validate-limits --urdf PATH --joints "..."` reports real out-of-range joints on its own. All three are pure kinematics - no rigid-body dynamics, no contact forces, no MuJoCo/PhysX solver is wired in yet, and the URDF reader only supports a single serial chain (see `urdf.rs`'s own module docs for why). See [`CHANGELOG.md`](CHANGELOG.md) for exactly what shipped, and the Roadmap below for what's still ahead.
 
 ---
 
@@ -57,6 +58,8 @@ flowchart LR
 * **How this fits the rest of the ecosystem.** Feeds HYDRA-UMC-TWIN's own renderer with real rigid-body/contact simulation - the physical plausibility check behind 'if it works in the Twin, it works on the floor.'
 * **Why v0 parses `<joint>` elements in document order instead of walking the real URDF link tree.** A real URDF is a tree of links that can branch at any joint; walking it correctly needs following every joint's `parent`/`child` link names from the root link. v0 instead treats document order as a single serial chain - honest for `HYDRA-UMC-EDITOR-URDF`'s own catalog, which is mostly single serial arms today, but a real limitation for anything that branches (see `urdf.rs`).
 * **Why `roxmltree` is the only dependency, not a full physics-engine binding yet.** Real forward kinematics and limit checking need nothing beyond reading XML attributes and doing matrix math by hand (`transform.rs`) - adding a MuJoCo/PhysX FFI binding for that would be dependency weight with no real payoff until actual rigid-body/contact simulation is being built.
+* **Why `fk-checked` is a new subcommand instead of changing `fk` in place.** `fk` is the existing low-level pure-math utility - some callers (e.g. tuning a limit itself) genuinely want the unchecked pose for an out-of-range value. `fk-checked` adds the fail-safe, limit-gated entry point real callers should use, without silently changing what `fk` has always meant.
+* **Why the joint-limits corpus (`corpus.rs`) is test-only.** It exists purely to give `limits.rs`'s and `kinematics.rs`'s regression tests one shared, real set of fixtures instead of duplicated ad hoc literals - it has no reason to ship in the release binary, so it's gated behind `#[cfg(test)]`.
 
 ---
 
@@ -70,17 +73,22 @@ project carries no `hardware/`, `firmware/` or `os/` folders.
 HYDRA-UMC-PHYSICS-REPLICA/
 ├── src/
 │   ├── transform.rs      # Real Vec3/Mat4 math (translation, axis-angle rotation, rpy)
-│   ├── urdf.rs            # Real, partial URDF reader (single serial chain)
-│   ├── kinematics.rs       # Real forward_kinematics()
-│   ├── limits.rs            # Real validate_limits()
-│   └── main.rs                # Entry point + real `fk`/`validate-limits` subcommands
+│   ├── urdf.rs           # Real, partial URDF reader (single serial chain)
+│   ├── kinematics.rs     # Real forward_kinematics() + forward_kinematics_checked()
+│   ├── limits.rs         # Real validate_limits()
+│   ├── corpus.rs         # Test-only reusable joint-limit fixture corpus
+│   └── main.rs           # Entry point + real `fk`/`fk-checked`/`validate-limits` subcommands
 ├── docs/                # Documentation and optimization guides
 ├── build/               # Build notes/artifacts (cargo's own output lives in target/, gitignored)
 ├── images/              # Media and diagrams
 ├── scripts/             # Utility scripts
+├── tools/
+│   ├── build_test.py    # Non-versioning build/compile check
+│   └── ci_validate.py   # Manifest/CHANGELOG/docs validation used by CI
 ├── Cargo.toml           # Package metadata, dependencies (roxmltree), odometer version
 ├── bump_version.py      # Odometer-style version bump (used by build.sh/.bat)
 ├── build.sh / build.bat # Bumps version, `cargo test`, then `cargo build --release`
+├── build-test.sh / build-test.bat # Non-versioning build check (no CHANGELOG/version bump)
 └── run.sh / run.bat     # Runs the compiled release binary (forwards arguments)
 ```
 
@@ -92,7 +100,7 @@ Requires the Rust toolchain (`cargo`/`rustc`, install via [rustup](https://rustu
 
 ```bash
 # Linux / macOS
-./build.sh   # odometer version bump, `cargo test` (24 tests), then `cargo build --release`
+./build.sh   # odometer version bump, `cargo test` (33 tests), then `cargo build --release`
 ./run.sh     # runs target/release/hydra-umc-physics-replica, prints name + version + role
 ```
 
@@ -115,7 +123,21 @@ The real `fk` and `validate-limits` subcommands need a URDF file:
 # LIMIT VIOLATION: joint 'shoulder' = 3.000000 (allowed [-1.570000, 1.570000])
 ```
 
-`fk` exits `0` on success, `2` on a bad `--urdf`/`--joints` value. `validate-limits` exits `0` (no violations), `1` (violations found), or `2` (bad input).
+The real `fk-checked` subcommand refuses to compute a pose at all when a joint is out of range - unlike plain `fk`, which computes it anyway:
+
+```bash
+./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
+# shoulder: x=0.000000 y=0.000000 z=0.100000
+# elbow: x=0.438791 y=0.239713 z=0.100000
+
+./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
+# LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
+
+./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
+# elbow: x=0.438791 y=0.239713 z=0.100000   <- computed anyway; this is the gap fk-checked closes
+```
+
+`fk` exits `0` on success, `2` on a bad `--urdf`/`--joints` value. `fk-checked` exits `0` (real pose), `1` (limit violation), or `2` (bad input). `validate-limits` exits `0` (no violations), `1` (violations found), or `2` (bad input).
 
 ---
 

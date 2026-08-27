@@ -20,6 +20,14 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.3] - Real v0: joint-limit corpus + limit-aware FK regressions
+
+- **`src/corpus.rs`** (new) - a real, reusable fixture corpus shared by `limits.rs`'s and `kinematics.rs`'s regression tests: `revolute_with_limit()`, `prismatic_with_limit()`, `continuous_unlimited()`, `fixed()`, plus `single_joint_chain()` and a realistic 2-DOF `shoulder_elbow_chain()` - a single source of truth for "in range"/"at the boundary"/"out of range" across every joint type, instead of duplicated ad hoc literals per test module. Test-only (`#[cfg(test)]`).
+- **`src/kinematics.rs`** - new `forward_kinematics_checked()`: the fail-safe counterpart to `forward_kinematics()` - checks every given joint position against its declared URDF limit FIRST (via `limits::validate_limits`), and refuses to compute a world-frame transform at all if any position is out of range, returning `CheckedKinematicsError::LimitViolation`. Closes a real gap: plain `forward_kinematics()` previously computed (and a caller could trust) a pose for a joint value arbitrarily far past its declared travel - physically meaningless for a real robot. `forward_kinematics()` itself is unchanged.
+- **`main.rs`** - new `fk-checked --urdf PATH --joints "..."` subcommand alongside the existing, unchanged `fk`: prints the real pose on success, or every violating joint (with its actual value and allowed range) and exits `1` if any position is out of range.
+- 9 new regression tests using the new corpus, covering both joint-limit boundaries (exactly at the limit succeeds, one unit past it is refused), a wildly out-of-range prismatic input (with a companion assertion that plain `forward_kinematics` computes it anyway, documenting exactly the gap `_checked` closes), a `continuous` joint (no limit to violate), a multi-joint chain reporting only the actually-violating joint, and limit violations taking precedence over an unrelated missing-position error. 33 tests total.
+- Real verification beyond the test suite: ran the compiled binary against a real 2-joint URDF fixture - `fk-checked` computed a real pose for an in-range configuration, refused (exit 1) an out-of-range one with the exact violation reported, while plain `fk` still computed the same out-of-range pose unchanged.
+
 ## [0.0.2] - Real v0 forward kinematics and joint-limit validation
 ### Added
 - `transform.rs` - real, dependency-free `Vec3`/`Mat4`: translation, axis-angle rotation (Rodrigues' formula), URDF `rpy` composition, matrix product, point transform.

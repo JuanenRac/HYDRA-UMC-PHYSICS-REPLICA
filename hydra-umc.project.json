@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-PHYSICS-REPLICA",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "role": "library",
   "stack": "rust",
   "technologies": [
@@ -10,11 +10,11 @@
     "MuJoCo/PhysX-class physics"
   ],
   "deployment_target": "cm5",
-  "maturity": "functional",
+  "maturity": "established",
   "family": "Digital Twin & Simulation",
   "parent": "HYDRA-UMC-TWIN",
   "build": "cargo build --release.",
-  "notes": "Real v0 forward kinematics and joint-limit validation (`fk`/`validate-limits` subcommands) over a real, documented-partial URDF subset (single serial chain, revolute/continuous/prismatic/fixed joints). Real MuJoCo/PhysX rigid-body and contact simulation stays future work - genuinely blocked on integrating an actual physics-engine dependency, not just unwritten code.",
+  "notes": "Established v0: real forward kinematics and joint-limit validation (`fk`/`validate-limits` subcommands) over a real, documented-partial URDF subset (single serial chain, revolute/continuous/prismatic/fixed joints). Plus a real joint-limits corpus (src/corpus.rs) and a fail-safe `fk-checked` subcommand: forward_kinematics_checked() refuses to compute a world-frame pose for a joint position outside its declared URDF limit, closing the gap where plain fk would silently compute a physically-unreachable pose. 33 tests. Real MuJoCo/PhysX rigid-body and contact simulation stays future work - genuinely blocked on integrating an actual physics-engine dependency, not just unwritten code.",
   "native_version": {
     "file": "Cargo.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""

@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
   <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-C++%20%2F%20Rust-orange.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Functional v0 stage">
+  <img src="https://img.shields.io/badge/Stage-Established%20v0-brightgreen.svg" alt="Established v0 stage">
 </p>
 
 ---
@@ -29,11 +29,12 @@ MuJoCo や NVIDIA PhysX のような最先端のソルバーを統合するこ�
 
 ### 主な機能：
 * 📐 **運動学的検証（v0）：** （文書化された部分的な）URDF サブセット上での実際の順運動学と実際の関節可動域チェック——今日実際に何が動くのかは下記「正直な現状確認」を参照してください。
+* 🔒 **実装済み v0 —— 可動域を考慮した FK：** `fk-checked` は、URDF で宣言された可動域を超える関節位置に対してワールド座標のポーズを計算することを拒否します。実際の再利用可能な関節可動域コーパスと、両方の境界および大幅に範囲外の入力に対する回帰テストに裏付けられています——プレーンな `fk` が物理的に到達不能なポーズを黙って報告してしまうギャップを塞ぎます。
 * 🏗️ **URDF から物理モデルへ（v0、部分的）：** URDF ファイルから実際の `<joint>` 要素（タイプ/原点/軸/可動域）を読み取ってチェーンを構築します。*まだ実際には存在しないもの：* 衝突メッシュの生成——それはこの機能の「物理」側半分として、今も未実装のままです。
 * ⚡ **リアルタイム性能（計画中）：** マルチロボットワークスペース向けの並列化された求解——まず実際の物理エンジン統合が存在することが前提です。
 * 🌡️ **熱シミュレーション（計画中）：** 工具ヘッド（T12/レーザー）における放熱をエミュレートする実験的サポート。
 
-**正直な現状確認 —— 今日実際に動くもの：** `fk --urdf パス --joints "j1=0.5,..."` は、URDF の関節変換を連鎖させることで、各関節の実際のワールド座標位置を計算します。`validate-limits --urdf パス --joints "..."` は、実際に可動域を超えた関節を報告します。どちらも純粋な運動学です——剛体力学も、接触力も、MuJoCo/PhysX ソルバーの接続もまだなく、URDF リーダーは単一の直列チェーンのみをサポートします（理由は `urdf.rs` 自身のモジュールドキュメントを参照）。実際に出荷済みの内容は [`CHANGELOG.md`](CHANGELOG.md) を、まだ残っている作業は下記のロードマップを参照してください。
+**正直な現状確認 —— 今日実際に動くもの：** `fk --urdf パス --joints "j1=0.5,..."` は、URDF の関節変換を連鎖させることで、その位置が宣言された可動域内にあるかどうかに関わらず、各関節の実際のワールド座標位置を計算します。`fk-checked` は同じ計算を行いますが、まず各位置を `validate-limits` の実際のチェックに通し、何かが範囲外であればポーズの計算（および報告）自体を拒否します。`validate-limits --urdf パス --joints "..."` は、実際に可動域を超えた関節を単独で報告します。3 つとも純粋な運動学です——剛体力学も、接触力も、MuJoCo/PhysX ソルバーの接続もまだなく、URDF リーダーは単一の直列チェーンのみをサポートします（理由は `urdf.rs` 自身のモジュールドキュメントを参照）。実際に出荷済みの内容は [`CHANGELOG.md`](CHANGELOG.md) を、まだ残っている作業は下記のロードマップを参照してください。
 
 ---
 
@@ -62,6 +63,8 @@ flowchart LR
 * **エコシステムの他の部分との関係。** HYDRA-UMC-TWIN 自身のレンダラーに実際の剛体/接触シミュレーションを供給します——これは「ツイン上で動作すれば、現場でも動作する」という理念を支える物理的妥当性の検証です。
 * **v0 が実際の URDF リンクツリーを辿る代わりに、文書順で `<joint>` 要素をパースする理由。** 実際の URDF は、どの関節でも分岐しうるリンクのツリーです。これを正しく辿るには、各関節の `parent`/`child` リンク名をルートリンクから実際に辿る必要があります。v0 はその代わりに文書順を単一の直列チェーンとして扱います——今日ほとんどが単一の直列アームである `HYDRA-UMC-EDITOR-URDF` 自身のカタログに対しては正直な扱いですが、分岐するものに対しては実際の制約となります（`urdf.rs` を参照）。
 * **`roxmltree` が唯一の依存関係であり、まだ完全な物理エンジンバインディングではない理由。** 実際の順運動学と実際の可動域チェックに必要なのは、XML 属性の読み取りと手書きの行列演算（`transform.rs`）だけです——実際の剛体/接触シミュレーションの構築が始まるまでは、そのために MuJoCo/PhysX の FFI バインディングを追加しても、実際の見返りのない依存関係の重みが増えるだけです。
+* **`fk-checked` が `fk` をその場で変更するのではなく新しいサブコマンドである理由。** `fk` は既存の低レベルな純粋数学ユーティリティです——一部の呼び出し元（例えば可動域自体を調整する場合）は、範囲外の値に対する未チェックのポーズを実際に必要とします。`fk-checked` は、`fk` がこれまで意味してきたものを黙って変更することなく、実際の呼び出し元が使うべきフェイルセーフで可動域チェック付きのエントリポイントを追加します。
+* **関節可動域コーパス（`corpus.rs`）がテスト専用である理由。** これは、`limits.rs` と `kinematics.rs` の回帰テストに、重複したその場しのぎのリテラルではなく、単一の実際の共有フィクスチャセットを与えるためだけに存在します——リリースバイナリに含める理由がないため、`#[cfg(test)]` の背後で保護されています。
 
 ---
 
@@ -75,17 +78,22 @@ flowchart LR
 HYDRA-UMC-PHYSICS-REPLICA/
 ├── src/
 │   ├── transform.rs      # 実際の Vec3/Mat4（平行移動、軸角回転、rpy）
-│   ├── urdf.rs             # 実際の、部分的な URDF リーダー（単一の直列チェーン）
-│   ├── kinematics.rs        # 実際の forward_kinematics()
-│   ├── limits.rs              # 実際の validate_limits()
-│   └── main.rs                  # エントリポイント + 実際の `fk`/`validate-limits` サブコマンド
+│   ├── urdf.rs           # 実際の、部分的な URDF リーダー（単一の直列チェーン）
+│   ├── kinematics.rs     # 実際の forward_kinematics() + forward_kinematics_checked()
+│   ├── limits.rs         # 実際の validate_limits()
+│   ├── corpus.rs         # テスト専用の可動域フィクスチャコーパス
+│   └── main.rs           # エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド
 ├── docs/                # ドキュメントと最適化ガイド
 ├── build/               # ビルドノート/成果物（cargo 自身の出力は target/ にあり、gitignore 対象）
 ├── images/              # メディアと図表
 ├── scripts/             # ユーティリティスクリプト
+├── tools/
+│   ├── build_test.py    # バージョンを増やさないビルドチェック
+│   └── ci_validate.py   # CI が使用するマニフェスト/CHANGELOG/ドキュメント検証
 ├── Cargo.toml           # パッケージメタデータ、依存関係（roxmltree）、オドメーターバージョン
 ├── bump_version.py      # オドメーター式バージョンインクリメント（build.sh/.bat が使用）
 ├── build.sh / build.bat # バージョンを増加させ、`cargo test`、その後 `cargo build --release` を実行
+├── build-test.sh / build-test.bat # バージョンを増やさないビルドチェック
 └── run.sh / run.bat     # コンパイル済みの release バイナリを実行（引数を転送）
 ```
 
@@ -98,7 +106,7 @@ Rust ツールチェーン（`cargo`/`rustc`、[rustup](https://rustup.rs) 経�
 
 ```bash
 # Linux / macOS
-./build.sh   # オドメーター式バージョンインクリメント、`cargo test`（24 件のテスト）、その後 `cargo build --release`
+./build.sh   # オドメーター式バージョンインクリメント、`cargo test`（33 件のテスト）、その後 `cargo build --release`
 ./run.sh     # target/release/hydra-umc-physics-replica を実行し、名前 + バージョン + 役割を表示
 ```
 
@@ -125,9 +133,25 @@ run.bat
 # LIMIT VIOLATION: joint 'shoulder' = 3.000000 (allowed [-1.570000, 1.570000])
 ```
 
+実際の `fk-checked` サブコマンドは、関節が範囲外の場合はポーズの計算を
+拒否します——それでも計算してしまうプレーンな `fk` とは異なります：
+
+```bash
+./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
+# shoulder: x=0.000000 y=0.000000 z=0.100000
+# elbow: x=0.438791 y=0.239713 z=0.100000
+
+./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
+# LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
+
+./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
+# elbow: x=0.438791 y=0.239713 z=0.100000   <- それでも計算されてしまう；これが fk-checked が塞ぐギャップです
+```
+
 `fk` は成功時に終了コード `0`、`--urdf`/`--joints` の値が不正な場合は
-`2` で終了します。`validate-limits` は違反なしで `0`、違反ありで `1`、
-不正な入力で `2` を返します。
+`2` で終了します。`fk-checked` は実際のポーズを返す場合は `0`、可動域
+違反の場合は `1`、不正な入力の場合は `2` で終了します。`validate-limits`
+は違反なしで `0`、違反ありで `1`、不正な入力で `2` を返します。
 
 ---
 

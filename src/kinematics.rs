@@ -9,6 +9,7 @@
 
 use std::collections::HashMap;
 
+use crate::limits::{validate_limits, LimitViolation};
 use crate::transform::Mat4;
 use crate::urdf::{Chain, Joint, JointType};
 
@@ -22,6 +23,27 @@ impl std::fmt::Display for KinematicsError {
         match self {
             KinematicsError::MissingJointPosition(name) => {
                 write!(f, "no position given for non-fixed joint '{name}'")
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum CheckedKinematicsError {
+    /// Same failures `forward_kinematics` itself can produce.
+    Kinematics(KinematicsError),
+    /// At least one given joint position is outside its declared URDF
+    /// limit - the requested configuration is not physically reachable,
+    /// so no world-frame transform is computed for it at all.
+    LimitViolation(Vec<LimitViolation>),
+}
+
+impl std::fmt::Display for CheckedKinematicsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CheckedKinematicsError::Kinematics(e) => write!(f, "{e}"),
+            CheckedKinematicsError::LimitViolation(violations) => {
+                write!(f, "{} joint limit violation(s)", violations.len())
             }
         }
     }
@@ -68,6 +90,27 @@ pub fn forward_kinematics(
     }
 
     Ok(out)
+}
+
+/// The fail-safe counterpart to `forward_kinematics`: checks every given
+/// joint position against its declared URDF limit FIRST, and refuses to
+/// compute a world-frame transform at all if any position is out of
+/// range - a limit violation "wins" over the math, the same
+/// detect-before-act precedence used across this ecosystem's other v0
+/// safety layers (e.g. HYDRA-UMC-SAFETY-ZONES's calibration check,
+/// HYDRA-UMC-VISUAL-SERVOING-API's `authorize_correction`). Plain
+/// `forward_kinematics` stays available unchanged for callers that
+/// genuinely want the unchecked math (e.g. exploring what pose an
+/// out-of-range value WOULD produce, for tuning limits themselves).
+pub fn forward_kinematics_checked(
+    chain: &Chain,
+    positions: &HashMap<String, f64>,
+) -> Result<Vec<(String, Mat4)>, CheckedKinematicsError> {
+    let violations = validate_limits(chain, positions);
+    if !violations.is_empty() {
+        return Err(CheckedKinematicsError::LimitViolation(violations));
+    }
+    forward_kinematics(chain, positions).map_err(CheckedKinematicsError::Kinematics)
 }
 
 #[cfg(test)]
@@ -161,5 +204,120 @@ mod tests {
         positions.insert("p1".to_string(), 0.5);
         let result = forward_kinematics(&chain, &positions).unwrap();
         assert_eq!(result[0].1.translation_part(), Vec3::new(0.0, 0.0, 0.5));
+    }
+
+    // -- forward_kinematics_checked: regression corpus, out-of-range inputs --
+
+    mod checked_regressions {
+        use super::*;
+        use crate::corpus;
+
+        #[test]
+        fn within_range_position_computes_a_real_pose() {
+            let chain = corpus::single_joint_chain(corpus::revolute_with_limit("j1", -1.0, 1.0));
+            let mut positions = HashMap::new();
+            positions.insert("j1".to_string(), 0.5);
+            assert!(forward_kinematics_checked(&chain, &positions).is_ok());
+        }
+
+        #[test]
+        fn exactly_at_the_upper_boundary_computes_a_real_pose() {
+            // Boundary: the limit's own edge counts as reachable, not violating.
+            let chain = corpus::single_joint_chain(corpus::revolute_with_limit("j1", -1.0, 1.0));
+            let mut positions = HashMap::new();
+            positions.insert("j1".to_string(), 1.0);
+            assert!(forward_kinematics_checked(&chain, &positions).is_ok());
+        }
+
+        #[test]
+        fn exactly_at_the_lower_boundary_computes_a_real_pose() {
+            let chain = corpus::single_joint_chain(corpus::revolute_with_limit("j1", -1.0, 1.0));
+            let mut positions = HashMap::new();
+            positions.insert("j1".to_string(), -1.0);
+            assert!(forward_kinematics_checked(&chain, &positions).is_ok());
+        }
+
+        #[test]
+        fn one_unit_past_the_upper_boundary_is_refused() {
+            let chain = corpus::single_joint_chain(corpus::revolute_with_limit("j1", -1.0, 1.0));
+            let mut positions = HashMap::new();
+            positions.insert("j1".to_string(), 1.000_001);
+            let err = forward_kinematics_checked(&chain, &positions).unwrap_err();
+            match err {
+                CheckedKinematicsError::LimitViolation(v) => assert_eq!(v.len(), 1),
+                other => panic!("expected LimitViolation, got {other:?}"),
+            }
+        }
+
+        #[test]
+        fn wildly_out_of_range_prismatic_input_is_refused_not_silently_computed() {
+            // The real gap this closes: forward_kinematics() alone would
+            // happily compute (and a caller might trust) a pose for a
+            // prismatic joint extended 1000 units past its declared
+            // travel - physically meaningless for a real robot.
+            let chain =
+                corpus::single_joint_chain(corpus::prismatic_with_limit("rail", 0.0, 0.5));
+            let mut positions = HashMap::new();
+            positions.insert("rail".to_string(), 1000.0);
+            assert!(matches!(
+                forward_kinematics_checked(&chain, &positions),
+                Err(CheckedKinematicsError::LimitViolation(_))
+            ));
+            // The unchecked function, by contrast, computes it anyway -
+            // documenting exactly the gap `_checked` closes.
+            assert!(forward_kinematics(&chain, &positions).is_ok());
+        }
+
+        #[test]
+        fn fixed_joint_in_a_mixed_chain_is_never_flagged() {
+            let chain = Chain {
+                joints: vec![
+                    corpus::revolute_with_limit("j1", -1.0, 1.0),
+                    corpus::fixed("mount"),
+                ],
+            };
+            let mut positions = HashMap::new();
+            positions.insert("j1".to_string(), 0.5);
+            // "mount" needs no entry - it's fixed.
+            assert!(forward_kinematics_checked(&chain, &positions).is_ok());
+        }
+
+        #[test]
+        fn continuous_joint_has_no_limit_to_violate() {
+            let chain = corpus::single_joint_chain(corpus::continuous_unlimited("spin"));
+            let mut positions = HashMap::new();
+            positions.insert("spin".to_string(), 1_000_000.0);
+            assert!(forward_kinematics_checked(&chain, &positions).is_ok());
+        }
+
+        #[test]
+        fn multi_joint_chain_reports_every_violating_joint() {
+            let chain = corpus::shoulder_elbow_chain();
+            let mut positions = HashMap::new();
+            positions.insert("shoulder".to_string(), 0.0); // within [-pi, pi]
+            positions.insert("elbow".to_string(), 5.0); // outside [-2.0, 2.0]
+            let err = forward_kinematics_checked(&chain, &positions).unwrap_err();
+            match err {
+                CheckedKinematicsError::LimitViolation(v) => {
+                    assert_eq!(v.len(), 1);
+                    assert_eq!(v[0].joint, "elbow");
+                }
+                other => panic!("expected LimitViolation, got {other:?}"),
+            }
+        }
+
+        #[test]
+        fn limit_violation_is_reported_before_a_missing_position_error() {
+            // A chain with an out-of-range joint AND a genuinely missing
+            // position for another joint - the limit violation (a real
+            // safety concern) must be what's reported, not silently
+            // superseded by the unrelated missing-input error.
+            let chain = corpus::shoulder_elbow_chain();
+            let mut positions = HashMap::new();
+            positions.insert("shoulder".to_string(), 100.0); // out of [-pi, pi]
+                                                               // "elbow" deliberately omitted.
+            let err = forward_kinematics_checked(&chain, &positions).unwrap_err();
+            assert!(matches!(err, CheckedKinematicsError::LimitViolation(_)));
+        }
     }
 }

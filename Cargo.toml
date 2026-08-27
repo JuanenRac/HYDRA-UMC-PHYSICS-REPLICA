@@ -1,6 +1,6 @@
 [package]
 name = "hydra-umc-physics-replica"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 description = "High-fidelity MuJoCo/PhysX simulation of URDF kinematic chains for the HYDRA-UMC Digital Twin."
 authors = ["JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>"]

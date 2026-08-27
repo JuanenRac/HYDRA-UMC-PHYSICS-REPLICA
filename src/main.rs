@@ -14,6 +14,8 @@
 //! "real" means here, and what is still out of scope (branching URDF trees,
 //! any actual MuJoCo/PhysX rigid-body or contact simulation).
 
+#[cfg(test)]
+mod corpus;
 mod kinematics;
 mod limits;
 mod transform;
@@ -100,6 +102,52 @@ fn run_fk(args: &[String]) -> ExitCode {
     }
 }
 
+fn run_fk_checked(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        eprintln!("fk-checked: missing required --urdf PATH");
+        return ExitCode::from(2);
+    };
+    let joints_spec = find_flag(args, "--joints").unwrap_or_default();
+
+    let chain = match load_chain(&urdf_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("fk-checked: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let positions = match parse_joint_positions(&joints_spec) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("fk-checked: invalid --joints value: {e}");
+            return ExitCode::from(2);
+        }
+    };
+
+    match kinematics::forward_kinematics_checked(&chain, &positions) {
+        Ok(result) => {
+            for (name, transform) in &result {
+                let p = transform.translation_part();
+                println!("{name}: x={:.6} y={:.6} z={:.6}", p.x, p.y, p.z);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(kinematics::CheckedKinematicsError::LimitViolation(violations)) => {
+            for v in &violations {
+                println!(
+                    "LIMIT VIOLATION: joint '{}' = {:.6} (allowed [{:.6}, {:.6}]) - refusing to compute an unreachable pose",
+                    v.joint, v.value, v.lower, v.upper
+                );
+            }
+            ExitCode::from(1)
+        }
+        Err(kinematics::CheckedKinematicsError::Kinematics(e)) => {
+            eprintln!("fk-checked: {e}");
+            ExitCode::from(2)
+        }
+    }
+}
+
 fn run_validate_limits(args: &[String]) -> ExitCode {
     let Some(urdf_path) = find_flag(args, "--urdf") else {
         eprintln!("validate-limits: missing required --urdf PATH");
@@ -142,6 +190,7 @@ fn main() -> ExitCode {
 
     match args.first().map(|s| s.as_str()) {
         Some("fk") => run_fk(&args[1..]),
+        Some("fk-checked") => run_fk_checked(&args[1..]),
         Some("validate-limits") => run_validate_limits(&args[1..]),
         _ => {
             println!("{PROJECT_NAME} v{VERSION}");

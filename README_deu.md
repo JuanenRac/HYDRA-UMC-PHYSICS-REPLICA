@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Lizenz-GPL%203.0-blue.svg" alt="GPL 3.0">
   <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Sprache-C++%20%2F%20Rust-orange.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Stufe-Funktional%20v0-yellow.svg" alt="Funktionale v0-Stufe">
+  <img src="https://img.shields.io/badge/Stufe-Etabliert%20v0-brightgreen.svg" alt="Etablierte v0-Stufe">
 </p>
 
 ---
@@ -25,11 +25,12 @@ Durch die Integration modernster Solver wie MuJoCo oder NVIDIA PhysX bietet es d
 
 ### Hauptmerkmale:
 * 📐 **Kinematische Validierung (v0):** echte Vorwärtskinematik und echte Gelenkgrenzenprüfung über eine (dokumentiert-partielle) URDF-Teilmenge - siehe "Ehrlichkeitscheck" unten für das, was heute genau läuft.
+* 🔒 **Echtes v0 - Grenzen-bewusste FK:** `fk-checked` verweigert die Berechnung einer Weltraum-Pose für eine Gelenkposition außerhalb ihrer deklarierten URDF-Grenze, gestützt auf einen echten, wiederverwendbaren Gelenkgrenzen-Korpus und Regressionstests für beide Grenzen sowie stark außerhalb liegende Eingaben - schließt die Lücke, in der reines `fk` still eine physikalisch unerreichbare Pose melden würde.
 * 🏗️ **URDF zu Physik (v0, teilweise):** liest echte `<joint>`-Elemente (Typ/Ursprung/Achse/Grenze) aus einer URDF-Datei in eine Kette ein. *Noch nicht real:* die Erzeugung von Kollisionsnetzen - das bleibt die "physikalische" Hälfte dieses Features.
 * ⚡ **Echtzeit-Performance (geplant):** parallelisierte Berechnung für Multi-Roboter-Arbeitsbereiche - setzt voraus, dass zuerst eine echte Physik-Engine-Integration existiert.
 * 🌡️ **Thermische Simulation (geplant):** experimentelle Unterstützung für die Emulation der Wärmeableitung in Werkzeugköpfen (T12/Laser).
 
-**Ehrlichkeitscheck - was heute wirklich läuft:** `fk --urdf PFAD --joints "j1=0.5,..."` berechnet echte Weltraum-Positionen pro Gelenk durch Verketten der URDF-Gelenktransformationen; `validate-limits --urdf PFAD --joints "..."` meldet echte Gelenke außerhalb ihres Bereichs. Beide sind reine Kinematik - keine Starrkörperdynamik, keine Kontaktkräfte, noch kein MuJoCo/PhysX-Solver angebunden, und der URDF-Reader unterstützt nur eine einzelne serielle Kette (siehe die eigene Dokumentation des `urdf.rs`-Moduls für das Warum). Siehe [`CHANGELOG.md`](CHANGELOG.md) für genau das, was geliefert wurde, und die Roadmap unten für das, was noch aussteht.
+**Ehrlichkeitscheck - was heute wirklich läuft:** `fk --urdf PFAD --joints "j1=0.5,..."` berechnet echte Weltraum-Positionen pro Gelenk durch Verketten der URDF-Gelenktransformationen, unabhängig davon, ob eine Position innerhalb ihrer deklarierten Grenze liegt; `fk-checked` führt dieselbe Berechnung durch, prüft aber zuerst jede Position gegen die echte Prüfung von `validate-limits` und verweigert die Berechnung (oder Meldung) jeglicher Pose, falls etwas außerhalb des Bereichs liegt; `validate-limits --urdf PFAD --joints "..."` meldet echte Gelenke außerhalb ihres Bereichs eigenständig. Alle drei sind reine Kinematik - keine Starrkörperdynamik, keine Kontaktkräfte, noch kein MuJoCo/PhysX-Solver angebunden, und der URDF-Reader unterstützt nur eine einzelne serielle Kette (siehe die eigene Dokumentation des `urdf.rs`-Moduls für das Warum). Siehe [`CHANGELOG.md`](CHANGELOG.md) für genau das, was geliefert wurde, und die Roadmap unten für das, was noch aussteht.
 
 ---
 
@@ -58,6 +59,8 @@ flowchart LR
 * **Wie sich das ins restliche Ökosystem einfügt.** Speist die eigene Rendering-Engine von HYDRA-UMC-TWIN mit echter Starrkörper-/Kontaktsimulation - die Prüfung physikalischer Plausibilität hinter 'wenn es im Zwilling funktioniert, funktioniert es in der Fabrik'.
 * **Warum v0 `<joint>`-Elemente in Dokumentreihenfolge parst, statt den echten URDF-Link-Baum zu durchlaufen.** Ein echtes URDF ist ein Baum von Links, der sich an jedem Gelenk verzweigen kann; ihn korrekt zu durchlaufen erfordert, den `parent`/`child`-Linknamen jedes Gelenks ausgehend vom Wurzel-Link zu folgen. v0 behandelt stattdessen die Dokumentreihenfolge als eine einzelne serielle Kette - ehrlich für den eigenen Katalog von `HYDRA-UMC-EDITOR-URDF`, der heute größtenteils aus einzelnen seriellen Armen besteht, aber eine echte Einschränkung für alles, was sich verzweigt (siehe `urdf.rs`).
 * **Warum `roxmltree` die einzige Abhängigkeit ist, noch kein vollständiges Physik-Engine-Binding.** Echte Vorwärtskinematik und echte Grenzenprüfung brauchen nichts weiter als das Lesen von XML-Attributen und handgeschriebene Matrixalgebra (`transform.rs`) - ein MuJoCo/PhysX-FFI-Binding dafür hinzuzufügen wäre Abhängigkeitsgewicht ohne echten Nutzen, bis tatsächlich eine echte Starrkörper-/Kontaktsimulation gebaut wird.
+* **Warum `fk-checked` ein neuer Subbefehl ist, statt `fk` an Ort und Stelle zu ändern.** `fk` ist das bestehende Low-Level-Dienstprogramm, reine Mathematik - manche Aufrufer (z. B. das Anpassen einer Grenze selbst) wollen tatsächlich die ungeprüfte Pose für einen außerhalb liegenden Wert. `fk-checked` fügt den fehlersicheren, grenzengeprüften Einstiegspunkt hinzu, den echte Aufrufer nutzen sollten, ohne stillschweigend zu ändern, was `fk` schon immer bedeutet hat.
+* **Warum der Gelenkgrenzen-Korpus (`corpus.rs`) nur für Tests ist.** Er existiert einzig, um den Regressionstests von `limits.rs` und `kinematics.rs` einen einzigen, echten, gemeinsamen Fixture-Satz zu geben, statt duplizierter Ad-hoc-Literale - er hat keinen Grund, in der Release-Binärdatei enthalten zu sein, daher ist er hinter `#[cfg(test)]` geschützt.
 
 ---
 
@@ -71,17 +74,22 @@ dieses Projekt keine Ordner `hardware/`, `firmware/` oder `os/`.
 HYDRA-UMC-PHYSICS-REPLICA/
 ├── src/
 │   ├── transform.rs      # Echte Vec3/Mat4 (Translation, Achsen-Winkel-Rotation, rpy)
-│   ├── urdf.rs             # Echter, partieller URDF-Reader (einzelne serielle Kette)
-│   ├── kinematics.rs        # Echtes forward_kinematics()
-│   ├── limits.rs              # Echtes validate_limits()
-│   └── main.rs                  # Einstiegspunkt + echte `fk`/`validate-limits`-Subbefehle
+│   ├── urdf.rs           # Echter, partieller URDF-Reader (einzelne serielle Kette)
+│   ├── kinematics.rs     # Echtes forward_kinematics() + forward_kinematics_checked()
+│   ├── limits.rs         # Echtes validate_limits()
+│   ├── corpus.rs         # Fixture-Korpus für Gelenkgrenzen, nur für Tests
+│   └── main.rs           # Einstiegspunkt + echte `fk`/`fk-checked`/`validate-limits`-Subbefehle
 ├── docs/                # Dokumentation und Optimierungsleitfäden
 ├── build/               # Build-Notizen/Artefakte (die eigentliche cargo-Ausgabe liegt in target/, per .gitignore ausgeschlossen)
 ├── images/              # Medien und Diagramme
 ├── scripts/             # Utility-Skripte
+├── tools/
+│   ├── build_test.py    # Nicht-versionierender Build-Check
+│   └── ci_validate.py   # Manifest/CHANGELOG/Docs-Validierung, von CI genutzt
 ├── Cargo.toml           # Paket-Metadaten, Abhängigkeiten (roxmltree), Kilometerzähler-Version
 ├── bump_version.py      # Kilometerzähler-artiger Versions-Bump (von build.sh/.bat verwendet)
 ├── build.sh / build.bat # Erhöht die Version, `cargo test`, dann `cargo build --release`
+├── build-test.sh / build-test.bat # Nicht-versionierender Build-Check
 └── run.sh / run.bat     # Führt die kompilierte Release-Binärdatei aus (leitet Argumente weiter)
 ```
 
@@ -93,7 +101,7 @@ Erfordert die Rust-Toolchain (`cargo`/`rustc`, Installation via [rustup](https:/
 
 ```bash
 # Linux / macOS
-./build.sh   # Kilometerzähler-Versions-Bump, `cargo test` (24 Tests), dann `cargo build --release`
+./build.sh   # Kilometerzähler-Versions-Bump, `cargo test` (33 Tests), dann `cargo build --release`
 ./run.sh     # führt target/release/hydra-umc-physics-replica aus, gibt Name + Version + Rolle aus
 ```
 
@@ -116,7 +124,21 @@ Die echten Subbefehle `fk` und `validate-limits` benötigen eine URDF-Datei:
 # LIMIT VIOLATION: joint 'shoulder' = 3.000000 (allowed [-1.570000, 1.570000])
 ```
 
-`fk` beendet sich mit `0` bei Erfolg, `2` bei ungültigem `--urdf`/`--joints`-Wert. `validate-limits` beendet sich mit `0` (keine Verletzungen), `1` (Verletzungen gefunden) oder `2` (ungültige Eingabe).
+Der echte Subbefehl `fk-checked` verweigert die Berechnung einer Pose, wenn ein Gelenk außerhalb des Bereichs liegt - anders als reines `fk`, das sie trotzdem berechnet:
+
+```bash
+./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
+# shoulder: x=0.000000 y=0.000000 z=0.100000
+# elbow: x=0.438791 y=0.239713 z=0.100000
+
+./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
+# LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
+
+./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
+# elbow: x=0.438791 y=0.239713 z=0.100000   <- wird trotzdem berechnet; das ist die Lücke, die fk-checked schließt
+```
+
+`fk` beendet sich mit `0` bei Erfolg, `2` bei ungültigem `--urdf`/`--joints`-Wert. `fk-checked` beendet sich mit `0` (echte Pose), `1` (Grenzverletzung) oder `2` (ungültige Eingabe). `validate-limits` beendet sich mit `0` (keine Verletzungen), `1` (Verletzungen gefunden) oder `2` (ungültige Eingabe).
 
 ---
 
