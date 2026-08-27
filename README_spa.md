@@ -63,9 +63,9 @@ flowchart LR
 
 ## 📂 ESTRUCTURA DE DIRECTORIOS
 
-Motor de simulación puramente software, sin diseño de hardware propio - por
-eso este proyecto no lleva carpetas `hardware/`, `firmware/` ni `os/` (ver
-la regla de poda en `SONNET/5.PLAN_EJECUCION_32_PROYECTOS_NUEVOS.txt`).
+Motor de simulación puramente software, sin diseño de hardware propio; las
+carpetas de código solo se incluyen cuando su implementación las requiere,
+por lo que este proyecto no lleva `hardware/`, `firmware/` ni `os/`.
 
 ```text
 HYDRA-UMC-PHYSICS-REPLICA/
@@ -209,3 +209,14 @@ Este proyecto forma parte de un ecosistema de robótica más amplio del mismo au
 
 ## 📜 LICENCIA
 GPL-3.0 - Ver archivo LICENSE para más detalles.
+
+## 🛠️ BUILD & RUN
+
+Usa la comprobación de compilación sin versionado antes de una compilación de publicación:
+
+| Acción | Windows | Linux / macOS |
+|---|---|---|
+| Comprobación de compilación (sin cambiar versión ni CHANGELOG) | `build-test.bat` | `./build-test.sh` |
+| Ejecución / desarrollo (cuando exista) | `run*.bat` o `dev*.bat` | `./run*.sh` o `./dev*.sh` |
+
+`build-test.bat` y `build-test.sh` compilan o validan el stack del proyecto sin incrementar `hydra-umc.project.json` ni modificar `CHANGELOG.md`. Solo pueden crear salidas normales del compilador. Los scripts existentes `build*.bat`, `build*.sh`, `run*` y `dev*` conservan su comportamiento específico de versión o ejecución; úsalos cuando necesites ese comportamiento.

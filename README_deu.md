@@ -63,9 +63,9 @@ flowchart LR
 
 ## 📂 VERZEICHNISSTRUKTUR
 
-Reine Software-Simulations-Engine ohne eigenes Hardware-Design - daher hat
-dieses Projekt keine Ordner `hardware/`, `firmware/` oder `os/` (siehe die
-Ordner-Pruning-Regel in `SONNET/5.PLAN_EJECUCION_32_PROYECTOS_NUEVOS.txt`).
+Reine Software-Simulations-Engine ohne eigenes Hardware-Design; Quellordner
+werden nur aufgenommen, wenn ihre Implementierung sie erfordert. Daher hat
+dieses Projekt keine Ordner `hardware/`, `firmware/` oder `os/`.
 
 ```text
 HYDRA-UMC-PHYSICS-REPLICA/
@@ -209,3 +209,14 @@ Dieses Projekt ist Teil eines größeren Robotik-Ökosystems desselben Autors (J
 
 ## 📜 LIZENZ
 GPL-3.0 - Siehe LICENSE für Details.
+
+## 🛠️ BUILD & RUN
+
+Verwenden Sie den Build-Check ohne Versionierung vor einem Release-Build:
+
+| Aktion | Windows | Linux / macOS |
+|---|---|---|
+| Build-Check (ohne Änderung von Version oder CHANGELOG) | `build-test.bat` | `./build-test.sh` |
+| Ausführung / Entwicklung (falls vorhanden) | `run*.bat` oder `dev*.bat` | `./run*.sh` oder `./dev*.sh` |
+
+`build-test.bat` und `build-test.sh` kompilieren oder validieren den Projekt-Stack, ohne `hydra-umc.project.json` zu erhöhen oder `CHANGELOG.md` zu verändern. Sie dürfen nur normale Compiler-Ausgaben erzeugen. Die vorhandenen Skripte `build*.bat`, `build*.sh`, `run*` und `dev*` behalten ihr projektbezogenes Versions- oder Laufzeitverhalten bei; verwenden Sie sie, wenn dieses Verhalten benötigt wird.
