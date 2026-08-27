@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "ecosystem": "HYDRA-UMC",
+  "name": "HYDRA-UMC-PHYSICS-REPLICA",
+  "version": "0.0.2",
+  "role": "library",
+  "stack": "rust",
+  "technologies": [
+    "Rust",
+    "MuJoCo/PhysX-class physics"
+  ],
+  "deployment_target": "cm5",
+  "maturity": "functional",
+  "family": "Digital Twin & Simulation",
+  "parent": "HYDRA-UMC-TWIN",
+  "build": "cargo build --release.",
+  "notes": "Real v0 forward kinematics and joint-limit validation (`fk`/`validate-limits` subcommands) over a real, documented-partial URDF subset (single serial chain, revolute/continuous/prismatic/fixed joints). Real MuJoCo/PhysX rigid-body and contact simulation stays future work - genuinely blocked on integrating an actual physics-engine dependency, not just unwritten code.",
+  "native_version": {
+    "file": "Cargo.toml",
+    "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""
+  }
+}

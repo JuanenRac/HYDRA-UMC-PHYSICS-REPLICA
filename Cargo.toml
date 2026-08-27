@@ -1,0 +1,18 @@
+[package]
+name = "hydra-umc-physics-replica"
+version = "0.0.2"
+edition = "2021"
+description = "High-fidelity MuJoCo/PhysX simulation of URDF kinematic chains for the HYDRA-UMC Digital Twin."
+authors = ["JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>"]
+license = "GPL-3.0-only"
+readme = "README.md"
+
+# v0: real forward kinematics + joint-limit validation over a URDF subset.
+# roxmltree is the only dependency - a small, read-only XML tree parser,
+# used to read a real (documented-subset) URDF file into a serial joint
+# Chain. All actual transform/kinematics/limit math is hand-written, no
+# physics-engine dependency. Still planned, not yet added: bindings/FFI
+# for MuJoCo or NVIDIA PhysX (rigid body + contact solver) and serde for
+# exchanging dynamic state (pos/vel/acc) with HYDRA-UMC-TWIN.
+[dependencies]
+roxmltree = "0.21"
