@@ -255,8 +255,7 @@ mod tests {
             // happily compute (and a caller might trust) a pose for a
             // prismatic joint extended 1000 units past its declared
             // travel - physically meaningless for a real robot.
-            let chain =
-                corpus::single_joint_chain(corpus::prismatic_with_limit("rail", 0.0, 0.5));
+            let chain = corpus::single_joint_chain(corpus::prismatic_with_limit("rail", 0.0, 0.5));
             let mut positions = HashMap::new();
             positions.insert("rail".to_string(), 1000.0);
             assert!(matches!(
@@ -315,7 +314,7 @@ mod tests {
             let chain = corpus::shoulder_elbow_chain();
             let mut positions = HashMap::new();
             positions.insert("shoulder".to_string(), 100.0); // out of [-pi, pi]
-                                                               // "elbow" deliberately omitted.
+                                                             // "elbow" deliberately omitted.
             let err = forward_kinematics_checked(&chain, &positions).unwrap_err();
             assert!(matches!(err, CheckedKinematicsError::LimitViolation(_)));
         }
