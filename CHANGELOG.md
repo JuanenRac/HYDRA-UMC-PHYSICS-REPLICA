@@ -20,6 +20,17 @@ semantic-versioning judgment calls:
 
 ---
 
+## Unreleased - finite joint-position gate
+
+- **`src/main.rs` / `src/kinematics.rs`** - CLI parsing and the reusable
+  forward-kinematics API reject empty joint names and `NaN`/infinite joint
+  positions before limit or transform math. Non-finite data can no longer
+  silently bypass ordered limit comparisons and produce corrupted poses.
+- Added regression coverage for malformed CLI positions and direct library
+  callers.
+
+---
+
 ## [0.0.3] - Real v0: joint-limit corpus + limit-aware FK regressions
 
 - **`src/corpus.rs`** (new) - a real, reusable fixture corpus shared by `limits.rs`'s and `kinematics.rs`'s regression tests: `revolute_with_limit()`, `prismatic_with_limit()`, `continuous_unlimited()`, `fixed()`, plus `single_joint_chain()` and a realistic 2-DOF `shoulder_elbow_chain()` - a single source of truth for "in range"/"at the boundary"/"out of range" across every joint type, instead of duplicated ad hoc literals per test module. Test-only (`#[cfg(test)]`).

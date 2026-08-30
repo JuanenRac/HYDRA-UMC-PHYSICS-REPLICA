@@ -16,6 +16,7 @@ use crate::urdf::{Chain, Joint, JointType};
 #[derive(Debug, PartialEq)]
 pub enum KinematicsError {
     MissingJointPosition(String),
+    NonFiniteJointPosition(String),
 }
 
 impl std::fmt::Display for KinematicsError {
@@ -23,6 +24,9 @@ impl std::fmt::Display for KinematicsError {
         match self {
             KinematicsError::MissingJointPosition(name) => {
                 write!(f, "no position given for non-fixed joint '{name}'")
+            }
+            KinematicsError::NonFiniteJointPosition(name) => {
+                write!(f, "non-finite position given for joint '{name}'")
             }
         }
     }
@@ -85,6 +89,9 @@ pub fn forward_kinematics(
                 .get(&joint.name)
                 .ok_or_else(|| KinematicsError::MissingJointPosition(joint.name.clone()))?
         };
+        if !position.is_finite() {
+            return Err(KinematicsError::NonFiniteJointPosition(joint.name.clone()));
+        }
         world = world.mul(&joint.origin).mul(&joint_motion(joint, position));
         out.push((joint.name.clone(), world));
     }
@@ -171,6 +178,19 @@ mod tests {
         assert_eq!(
             result,
             Err(KinematicsError::MissingJointPosition("j1".to_string()))
+        );
+    }
+
+    #[test]
+    fn non_finite_position_is_refused_before_transform_math() {
+        let chain = Chain {
+            joints: vec![revolute("j1", 0.0, Vec3::new(0.0, 0.0, 1.0), None)],
+        };
+        let mut positions = HashMap::new();
+        positions.insert("j1".to_string(), f64::NAN);
+        assert_eq!(
+            forward_kinematics(&chain, &positions),
+            Err(KinematicsError::NonFiniteJointPosition("j1".to_string()))
         );
     }
 

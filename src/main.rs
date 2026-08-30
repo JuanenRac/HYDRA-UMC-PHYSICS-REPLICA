@@ -47,7 +47,16 @@ fn parse_joint_positions(spec: &str) -> Result<HashMap<String, f64>, String> {
             .trim()
             .parse()
             .map_err(|_| format!("'{value_str}' is not a valid number (joint '{name}')"))?;
-        positions.insert(name.trim().to_string(), value);
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("joint name must not be empty".to_string());
+        }
+        if !value.is_finite() {
+            return Err(format!(
+                "'{value_str}' is not a finite number (joint '{name}')"
+            ));
+        }
+        positions.insert(name.to_string(), value);
     }
     Ok(positions)
 }
@@ -197,5 +206,17 @@ fn main() -> ExitCode {
             println!("{ROLE}");
             ExitCode::SUCCESS
         }
+    }
+}
+
+#[cfg(test)]
+mod position_parse_tests {
+    use super::parse_joint_positions;
+
+    #[test]
+    fn joint_positions_reject_empty_names_and_non_finite_values() {
+        assert!(parse_joint_positions("=0.5").is_err());
+        assert!(parse_joint_positions("shoulder=nan").is_err());
+        assert!(parse_joint_positions("shoulder=inf").is_err());
     }
 }
