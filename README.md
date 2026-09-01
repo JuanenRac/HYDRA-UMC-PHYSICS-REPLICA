@@ -163,7 +163,7 @@ This project is part of a larger robotics ecosystem by the same author (JuanenRa
 
 ### Directly Related (outside the family)
 
-- **[HYDRA-UMC-EDITOR-URDF](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-URDF)** — consumes the URDF models authored here.
+- **[HYDRA-UMC-EDITOR-URDF](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-URDF)** — the tool the URDF models this project reads (`fk`/`validate-limits`) are authored with.
 
 ### Rest of the Ecosystem
 
