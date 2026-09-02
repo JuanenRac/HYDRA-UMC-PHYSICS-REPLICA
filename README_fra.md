@@ -82,12 +82,12 @@ HYDRA-UMC-PHYSICS-REPLICA/
 ├── docs/                # Documentation et guides d'optimisation
 ├── build/               # Notes/artefacts de build (la sortie réelle de cargo vit dans target/, ignoré par git)
 ├── images/              # Médias et diagrammes
-├── scripts/             # Scripts utilitaires
 ├── tools/
 │   ├── build_test.py    # Vérification de build sans versionnage
 │   └── ci_validate.py   # Validation manifeste/CHANGELOG/docs utilisée par CI
 ├── Cargo.toml           # Métadonnées du paquet, dépendances (roxmltree), version compteur kilométrique
-├── bump_version.py      # Incrément de version type compteur kilométrique (utilisé par build.sh/.bat)
+├── bump_version.py      # Incrément de version native type compteur kilométrique (utilisé par build.sh/.bat)
+├── bump_manifest_version.py # Synchronise la version de hydra-umc.project.json avec la version native (--sync)
 ├── build.sh / build.bat # Incrémente la version, `cargo test`, puis `cargo build --release`
 ├── build-test.sh / build-test.bat # Vérification de build sans versionnage
 └── run.sh / run.bat     # Exécute le binaire release compilé (relaie les arguments)
