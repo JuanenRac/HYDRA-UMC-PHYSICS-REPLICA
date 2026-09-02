@@ -102,7 +102,7 @@ Richiede il toolchain Rust (`cargo`/`rustc`, installabile via [rustup](https://r
 
 ```bash
 # Linux / macOS
-./build.sh   # bump di version contachilometri, `cargo test` (33 test), poi `cargo build --release`
+./build.sh   # bump di version contachilometri, `cargo test` (35 test), poi `cargo build --release`
 ./run.sh     # esegue target/release/hydra-umc-physics-replica, stampa nome + version + ruolo
 ```
 
