@@ -83,7 +83,8 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # 実際の validate_limits()
 │   ├── corpus.rs         # テスト専用の可動域フィクスチャコーパス
 │   └── main.rs           # エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド
-├── docs/                # ドキュメントと最適化ガイド
+├── docs/
+│   └── CLI_REFERENCE.md # 完全なコマンドラインリファレンス、すべての終了コードとエラーケース
 ├── build/               # ビルドノート/成果物（cargo 自身の出力は target/ にあり、gitignore 対象）
 ├── images/              # メディアと図表
 ├── tools/
@@ -138,20 +139,22 @@ run.bat
 
 ```bash
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
-# shoulder: x=0.000000 y=0.000000 z=0.100000
-# elbow: x=0.438791 y=0.239713 z=0.100000
+# shoulder: x=0.000000 y=0.000000 z=0.200000
+# elbow: x=0.263275 y=0.143828 z=0.200000
 
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
 # LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 
 ./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
-# elbow: x=0.438791 y=0.239713 z=0.100000   <- それでも計算されてしまう；これが fk-checked が塞ぐギャップです
+# elbow: x=0.263275 y=0.143828 z=0.200000   <- それでも計算されてしまう；これが fk-checked が塞ぐギャップです
 ```
 
 `fk` は成功時に終了コード `0`、`--urdf`/`--joints` の値が不正な場合は
 `2` で終了します。`fk-checked` は実際のポーズを返す場合は `0`、可動域
 違反の場合は `1`、不正な入力の場合は `2` で終了します。`validate-limits`
 は違反なしで `0`、違反ありで `1`、不正な入力で `2` を返します。
+
+完全なコマンドラインリファレンス - 実際のリリースバイナリの実行から採取した、あらゆる実際のエラーケース（引数の欠落・不正な形式、読み取れない URDF ファイルなど）を含む - は [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md) を参照してください。
 
 ---
 

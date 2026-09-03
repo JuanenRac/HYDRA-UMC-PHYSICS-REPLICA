@@ -79,7 +79,8 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # Echtes validate_limits()
 │   ├── corpus.rs         # Fixture-Korpus für Gelenkgrenzen, nur für Tests
 │   └── main.rs           # Einstiegspunkt + echte `fk`/`fk-checked`/`validate-limits`-Subbefehle
-├── docs/                # Dokumentation und Optimierungsleitfäden
+├── docs/
+│   └── CLI_REFERENCE.md # Vollständige Kommandozeilenreferenz, jeder Exit-Code und Fehlerfall
 ├── build/               # Build-Notizen/Artefakte (die eigentliche cargo-Ausgabe liegt in target/, per .gitignore ausgeschlossen)
 ├── images/              # Medien und Diagramme
 ├── tools/
@@ -128,17 +129,19 @@ Der echte Subbefehl `fk-checked` verweigert die Berechnung einer Pose, wenn ein 
 
 ```bash
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
-# shoulder: x=0.000000 y=0.000000 z=0.100000
-# elbow: x=0.438791 y=0.239713 z=0.100000
+# shoulder: x=0.000000 y=0.000000 z=0.200000
+# elbow: x=0.263275 y=0.143828 z=0.200000
 
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
 # LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 
 ./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
-# elbow: x=0.438791 y=0.239713 z=0.100000   <- wird trotzdem berechnet; das ist die Lücke, die fk-checked schließt
+# elbow: x=0.263275 y=0.143828 z=0.200000   <- wird trotzdem berechnet; das ist die Lücke, die fk-checked schließt
 ```
 
 `fk` beendet sich mit `0` bei Erfolg, `2` bei ungültigem `--urdf`/`--joints`-Wert. `fk-checked` beendet sich mit `0` (echte Pose), `1` (Grenzverletzung) oder `2` (ungültige Eingabe). `validate-limits` beendet sich mit `0` (keine Verletzungen), `1` (Verletzungen gefunden) oder `2` (ungültige Eingabe).
+
+Die vollständige Kommandozeilenreferenz - mit jedem echten Fehlerfall (fehlende/ungültige Argumente, eine nicht lesbare URDF-Datei), aufgezeichnet von einem tatsächlichen Release-Binary-Lauf - steht in [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md).
 
 ---
 

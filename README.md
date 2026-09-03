@@ -78,7 +78,8 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # Real validate_limits()
 │   ├── corpus.rs         # Test-only reusable joint-limit fixture corpus
 │   └── main.rs           # Entry point + real `fk`/`fk-checked`/`validate-limits` subcommands
-├── docs/                # Documentation and optimization guides
+├── docs/
+│   └── CLI_REFERENCE.md # Full command-line reference, every exit code and error case
 ├── build/               # Build notes/artifacts (cargo's own output lives in target/, gitignored)
 ├── images/              # Media and diagrams
 ├── tools/
@@ -127,17 +128,19 @@ The real `fk-checked` subcommand refuses to compute a pose at all when a joint i
 
 ```bash
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
-# shoulder: x=0.000000 y=0.000000 z=0.100000
-# elbow: x=0.438791 y=0.239713 z=0.100000
+# shoulder: x=0.000000 y=0.000000 z=0.200000
+# elbow: x=0.263275 y=0.143828 z=0.200000
 
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
 # LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 
 ./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
-# elbow: x=0.438791 y=0.239713 z=0.100000   <- computed anyway; this is the gap fk-checked closes
+# elbow: x=0.263275 y=0.143828 z=0.200000   <- computed anyway; this is the gap fk-checked closes
 ```
 
 `fk` exits `0` on success, `2` on a bad `--urdf`/`--joints` value. `fk-checked` exits `0` (real pose), `1` (limit violation), or `2` (bad input). `validate-limits` exits `0` (no violations), `1` (violations found), or `2` (bad input).
+
+See [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md) for the full command reference, including every real error case (missing/malformed arguments, an unreadable URDF file) captured from an actual release-binary run.
 
 ---
 

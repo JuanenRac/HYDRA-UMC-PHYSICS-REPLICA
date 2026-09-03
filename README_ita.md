@@ -80,7 +80,8 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # validate_limits() reale
 │   ├── corpus.rs         # Corpus di fixture di limiti, solo per i test
 │   └── main.rs           # Entry point + sottocomandi reali `fk`/`fk-checked`/`validate-limits`
-├── docs/                # Documentazione e guide all'ottimizzazione
+├── docs/
+│   └── CLI_REFERENCE.md # Riferimento completo della riga di comando, ogni codice di uscita e caso di errore
 ├── build/               # Note/artefatti di build (l'output reale di cargo vive in target/, escluso da git)
 ├── images/              # Media e diagrammi
 ├── tools/
@@ -129,17 +130,19 @@ Il vero sottocomando `fk-checked` si rifiuta di calcolare una posa quando un giu
 
 ```bash
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
-# shoulder: x=0.000000 y=0.000000 z=0.100000
-# elbow: x=0.438791 y=0.239713 z=0.100000
+# shoulder: x=0.000000 y=0.000000 z=0.200000
+# elbow: x=0.263275 y=0.143828 z=0.200000
 
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
 # LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 
 ./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
-# elbow: x=0.438791 y=0.239713 z=0.100000   <- calcolato comunque; questo è il divario che fk-checked chiude
+# elbow: x=0.263275 y=0.143828 z=0.200000   <- calcolato comunque; questo è il divario che fk-checked chiude
 ```
 
 `fk` esce con `0` in caso di successo, `2` se `--urdf`/`--joints` non è valido. `fk-checked` esce con `0` (posa reale), `1` (violazione di limite), o `2` (input non valido). `validate-limits` esce con `0` (nessuna violazione), `1` (violazioni trovate), o `2` (input non valido).
+
+Vedi [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md) per il riferimento completo della riga di comando, con ogni caso di errore reale (argomenti mancanti/malformati, un file URDF illeggibile) catturato da un'esecuzione reale del binario di release.
 
 ---
 

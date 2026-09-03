@@ -79,7 +79,8 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # 真实的 validate_limits()
 │   ├── corpus.rs         # 仅用于测试的限位 fixture 语料库
 │   └── main.rs           # 入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令
-├── docs/                # 文档与优化指南
+├── docs/
+│   └── CLI_REFERENCE.md # 完整命令行参考，涵盖每个退出码和错误情形
 ├── build/               # 构建笔记/产物（cargo 自身的输出位于 target/，已被 gitignore）
 ├── images/              # 媒体与图表
 ├── tools/
@@ -132,20 +133,22 @@ run.bat
 
 ```bash
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
-# shoulder: x=0.000000 y=0.000000 z=0.100000
-# elbow: x=0.438791 y=0.239713 z=0.100000
+# shoulder: x=0.000000 y=0.000000 z=0.200000
+# elbow: x=0.263275 y=0.143828 z=0.200000
 
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
 # LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 
 ./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
-# elbow: x=0.438791 y=0.239713 z=0.100000   <- 仍会照常计算；这正是 fk-checked 所填补的漏洞
+# elbow: x=0.263275 y=0.143828 z=0.200000   <- 仍会照常计算；这正是 fk-checked 所填补的漏洞
 ```
 
 `fk` 成功时退出码为 `0`，`--urdf`/`--joints` 值无效时为 `2`。`fk-checked`
 返回真实位姿时为 `0`，出现限位违规时为 `1`，输入无效时为 `2`。
 `validate-limits` 无违规时退出码为 `0`，发现违规时为 `1`，输入无效时
 为 `2`。
+
+完整命令行参考——包含从真实发布二进制文件运行中采集到的每一种真实错误情形（缺失/格式错误的参数、无法读取的 URDF 文件）——见 [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md)。
 
 ---
 

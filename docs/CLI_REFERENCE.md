@@ -105,6 +105,21 @@ $ hydra-umc-physics-replica fk --urdf arm.urdf --joints "shoulder=abc"
 fk: invalid --joints value: 'abc' is not a valid number (joint 'shoulder')
 ```
 
+**Non-finite joint value** (`nan`/`inf` parse as valid `f64`s in Rust, but
+are rejected explicitly before limit or transform math ever sees them —
+without this gate, a non-finite input silently produces a `NaN` pose
+instead of a clear error; exit `2`):
+
+```
+$ hydra-umc-physics-replica fk --urdf arm.urdf --joints "shoulder=nan,elbow=0.2"
+fk: invalid --joints value: 'nan' is not a finite number (joint 'shoulder')
+```
+
+The same check applies to every subcommand below, since all of them parse
+`--joints` through the same `parse_joint_positions()` — `fk-checked` and
+`validate-limits` reject a non-finite joint value with the same message and
+exit code before doing anything else.
+
 ### `fk-checked --urdf PATH --joints "name=value,..."`
 
 Same forward kinematics as `fk`, but refuses to compute a pose at all if any

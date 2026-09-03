@@ -44,7 +44,7 @@ futuro.
 
 ```mermaid
 flowchart LR
-    URDF["URDF Visual - real v0 (parcial: cadena serial unica)"] --> MESH["Simplificación de Malla de Colisión - planeado"]
+    URDF["URDF Visual - real v0 (parcial: cadena serial única)"] --> MESH["Simplificación de Malla de Colisión - planeado"]
     MESH --> SOLVE["Solver de Física (MuJoCo) - planeado"]
     SOLVE --> DYN["Estado Dinámico (Pos/Vel/Acc) - planeado"]
     DYN --> TWIN["Viewport HYDRA-UMC-TWIN - planeado"]
@@ -79,7 +79,8 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # validate_limits() real
 │   ├── corpus.rs         # Corpus de fixtures de limites, solo para tests
 │   └── main.rs           # Entry point + subcomandos reales `fk`/`fk-checked`/`validate-limits`
-├── docs/                # Documentación y guías de optimización
+├── docs/
+│   └── CLI_REFERENCE.md # Referencia completa de línea de comandos, cada código de salida y caso de error
 ├── build/               # Notas/artefactos de build (la salida real de cargo vive en target/, en .gitignore)
 ├── images/              # Medios y diagramas
 ├── tools/
@@ -128,17 +129,19 @@ El subcomando real `fk-checked` se niega a calcular una pose cuando una articula
 
 ```bash
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=0.2"
-# shoulder: x=0.000000 y=0.000000 z=0.100000
-# elbow: x=0.438791 y=0.239713 z=0.100000
+# shoulder: x=0.000000 y=0.000000 z=0.200000
+# elbow: x=0.263275 y=0.143828 z=0.200000
 
 ./run.sh fk-checked --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
 # LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 
 ./run.sh fk --urdf arm.urdf --joints "shoulder=0.5,elbow=5.0"
-# elbow: x=0.438791 y=0.239713 z=0.100000   <- se calcula de todos modos; este es el hueco que cierra fk-checked
+# elbow: x=0.263275 y=0.143828 z=0.200000   <- se calcula de todos modos; este es el hueco que cierra fk-checked
 ```
 
 `fk` sale con `0` en éxito, `2` si `--urdf`/`--joints` es inválido. `fk-checked` sale con `0` (pose real), `1` (violación de límite), o `2` (entrada inválida). `validate-limits` sale con `0` (sin violaciones), `1` (violaciones encontradas), o `2` (entrada inválida).
+
+Ver [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md) para la referencia completa de línea de comandos, con cada caso de error real (argumentos faltantes/mal formados, un archivo URDF ilegible) capturado de una ejecución real del binario de release.
 
 ---
 
