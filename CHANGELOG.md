@@ -20,8 +20,7 @@ semantic-versioning judgment calls:
 
 ## [0.0.5] - PHYS-01: reject malformed/non-finite URDF values instead of silently accepting them
 
-- **PHYS-01 (found in an ecosystem-wide software-improvements audit,
-  P0):** `parse_xyz` used `.filter_map(|s| s.parse().ok())`, silently
+- **PHYS-01 (P0):** `parse_xyz` used `.filter_map(|s| s.parse().ok())`, silently
   DROPPING any malformed token instead of failing the parse - an
   `origin xyz="typo 1 2 3"` was accepted as if it had genuinely been
   `"1 2 3"`. Separately, joint `<limit lower="..." upper="...">` values
@@ -48,7 +47,7 @@ semantic-versioning judgment calls:
 
 ## [0.0.4] - Real parent/child URDF tree walk
 
-- Found in an ecosystem-wide software-improvements audit: `src/urdf.rs`
+- Found while auditing the code: `src/urdf.rs`
   used to parse `<joint>` elements in raw XML document order and treat
   that order as the serial chain - real URDF makes no such guarantee (a
   spec-valid file may declare its `<joint>` elements in any order at
