@@ -5,7 +5,7 @@
 // =============================================================================
 //! A real, deliberately partial URDF reader.
 //!
-//! Found in an ecosystem-wide software-improvements audit: this used to
+//! Found while auditing the code: this used to
 //! parse `<joint>` elements (`type`, `<origin>`, `<axis>`, `<limit>`) in
 //! raw XML document order and treat that order as the serial chain -
 //! real URDF makes no such guarantee (a spec-valid file may declare its
@@ -66,8 +66,7 @@ pub enum UrdfError {
         joint: String,
         text: String,
     },
-    /// PHYS-01 (found in an ecosystem-wide software-improvements audit,
-    /// P0): Rust's own `f64::from_str` accepts "nan"/"inf"/"infinity" as
+    /// PHYS-01 (P0): Rust's own `f64::from_str` accepts "nan"/"inf"/"infinity" as
     /// syntactically valid floats, so a plain `.parse::<f64>()` alone
     /// never rejects a non-finite origin component or joint limit -
     /// `is_finite()` must be checked explicitly wherever a value must be
@@ -164,7 +163,7 @@ impl std::fmt::Display for UrdfError {
 }
 
 /// Parses a real, space-separated "x y z" attribute value. PHYS-01
-/// (found in an ecosystem-wide software-improvements audit, P0): this
+/// (P0): this
 /// used to be `.filter_map(|s| s.parse().ok())` - a malformed token
 /// (e.g. "typo" in "typo 1 2 3") was silently DROPPED rather than
 /// failing the parse, so a 4-token value with one garbage token and
@@ -624,8 +623,7 @@ mod tests {
         ));
     }
 
-    // PHYS-01 (found in an ecosystem-wide software-improvements audit,
-    // P0): the finding's own exact reproduction - a URDF with a
+    // PHYS-01 (P0): the finding's own exact reproduction - a URDF with a
     // malformed `origin xyz` (a real token mixed with garbage) and a
     // non-finite joint limit used to be silently accepted, producing a
     // real, wrong pose (an FK check against a 1000-unit rail joint came
