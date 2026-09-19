@@ -165,6 +165,7 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 
 **Directly Related**
 - **[HYDRA-UMC-EDITOR-URDF](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-URDF)** — desktop graphical URDF creator/editor that pushes finished models into STUDIO's own catalog — the tool the URDF models this project reads (`fk`/`validate-limits`) are authored with.
+- **[HYDRA-UMC-EDITOR-STL](https://github.com/JuanenRac/HYDRA-UMC-EDITOR-STL)** — desktop STL model editor, transforming/replacing/removing/adding real parts in the same model catalog HYDRA-UMC-EDITOR-URDF also edits.
 
 **Also Part of the Ecosystem**
 
