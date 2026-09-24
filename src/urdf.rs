@@ -66,7 +66,7 @@ pub enum UrdfError {
         joint: String,
         text: String,
     },
-    /// PHYS-01 (P0): Rust's own `f64::from_str` accepts "nan"/"inf"/"infinity" as
+    /// Rust's own `f64::from_str` accepts "nan"/"inf"/"infinity" as
     /// syntactically valid floats, so a plain `.parse::<f64>()` alone
     /// never rejects a non-finite origin component or joint limit -
     /// `is_finite()` must be checked explicitly wherever a value must be
@@ -162,7 +162,7 @@ impl std::fmt::Display for UrdfError {
     }
 }
 
-/// Parses a real, space-separated "x y z" attribute value. PHYS-01
+/// Parses a real, space-separated "x y z" attribute value. 
 /// (P0): this
 /// used to be `.filter_map(|s| s.parse().ok())` - a malformed token
 /// (e.g. "typo" in "typo 1 2 3") was silently DROPPED rather than
@@ -186,7 +186,7 @@ fn parse_xyz(text: &str) -> Option<Vec3> {
 
 /// Parses an optional Vec3-shaped attribute (`xyz`/`rpy`) on an element
 /// already known to exist (`node`), applying `default` only when the
-/// attribute itself is genuinely ABSENT. PHYS-01: a PRESENT but
+/// attribute itself is genuinely ABSENT. a PRESENT but
 /// malformed value (wrong token count, a non-numeric or non-finite
 /// token) is a real error, never a silent fallback to that same
 /// default - the old `.and_then(parse_xyz).unwrap_or(default)` made a
@@ -209,7 +209,7 @@ fn parse_optional_vec3(
 
 /// Parses a required-when-present numeric attribute (a joint limit
 /// bound), defaulting to `0.0` only when the attribute is genuinely
-/// absent. PHYS-01: Rust's own `f64::from_str` accepts
+/// absent. Rust's own `f64::from_str` accepts
 /// "nan"/"inf"/"infinity" as syntactically valid floats, so
 /// `.parse::<f64>()` alone never rejects a non-finite limit -
 /// `is_finite()` is checked explicitly.
@@ -623,7 +623,7 @@ mod tests {
         ));
     }
 
-    // PHYS-01 (P0): the finding's own exact reproduction - a URDF with a
+    // the finding's own exact reproduction - a URDF with a
     // malformed `origin xyz` (a real token mixed with garbage) and a
     // non-finite joint limit used to be silently accepted, producing a
     // real, wrong pose (an FK check against a 1000-unit rail joint came
