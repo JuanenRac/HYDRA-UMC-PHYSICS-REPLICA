@@ -30,7 +30,7 @@ pub fn validate_limits(chain: &Chain, positions: &HashMap<String, f64>) -> Vec<L
         let Some(&value) = positions.get(&joint.name) else {
             continue;
         };
-        // PHYS-01 (P0): urdf.rs's own parser now rejects a non-finite or
+        // urdf.rs's own parser now rejects a non-finite or
         // inverted limit at parse time, but Joint's fields are public -
         // any other caller building a Chain directly (a test, a future
         // second source) could still hand this function a NaN/infinite
@@ -134,7 +134,7 @@ mod tests {
         assert!(validate_limits(&chain, &positions).is_empty());
     }
 
-    // PHYS-01 (P0): urdf.rs's own parser now rejects a non-finite limit at parse
+    // urdf.rs's own parser now rejects a non-finite limit at parse
     // time, but Joint's fields are public - this defense-in-depth check
     // covers a Chain built directly (bypassing the parser entirely, as
     // this test itself does), the same real gap the review's probe

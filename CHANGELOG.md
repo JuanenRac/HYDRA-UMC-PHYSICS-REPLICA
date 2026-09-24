@@ -18,9 +18,9 @@ semantic-versioning judgment calls:
 
 ---
 
-## [0.0.5] - PHYS-01: reject malformed/non-finite URDF values instead of silently accepting them
+## [0.0.5] - reject malformed/non-finite URDF values instead of silently accepting them
 
-- **PHYS-01 (P0):** `parse_xyz` used `.filter_map(|s| s.parse().ok())`, silently
+- `parse_xyz` used `.filter_map(|s| s.parse.ok)`, silently
   DROPPING any malformed token instead of failing the parse - an
   `origin xyz="typo 1 2 3"` was accepted as if it had genuinely been
   `"1 2 3"`. Separately, joint `<limit lower="..." upper="...">` values
