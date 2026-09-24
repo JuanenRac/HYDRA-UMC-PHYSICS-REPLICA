@@ -162,9 +162,9 @@ impl std::fmt::Display for UrdfError {
     }
 }
 
-/// Parses a real, space-separated "x y z" attribute value. 
-/// (P0): this
-/// used to be `.filter_map(|s| s.parse().ok())` - a malformed token
+/// Parses a real, space-separated "x y z" attribute value.
+///
+/// Previously this used to be `.filter_map(|s| s.parse().ok())` - a malformed token
 /// (e.g. "typo" in "typo 1 2 3") was silently DROPPED rather than
 /// failing the parse, so a 4-token value with one garbage token and
 /// three real numbers was silently accepted as if it were the valid
