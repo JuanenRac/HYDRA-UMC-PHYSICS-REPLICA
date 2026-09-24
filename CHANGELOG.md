@@ -18,6 +18,12 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.6] - Poses are labelled as estimates
+
+- `fk` and `fk-checked` now print a note on stderr saying the numbers are a kinematic
+  estimate from the URDF geometry only: no dynamics, not calibrated against a physical
+  robot. Standard output is unchanged, so anything reading it keeps working.
+
 ## [0.0.5] - reject malformed/non-finite URDF values instead of silently accepting them
 
 - `parse_xyz` used `.filter_map(|s| s.parse.ok)`, silently
