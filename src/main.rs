@@ -28,6 +28,10 @@ use std::process::ExitCode;
 
 const PROJECT_NAME: &str = "HYDRA-UMC-PHYSICS-REPLICA";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Printed on stderr by every command that reports a pose: what these numbers
+/// are and are not, so they are never mistaken for a measurement.
+const ESTIMATE_NOTICE: &str = "note: kinematic estimate from the URDF geometry only - no dynamics, and not calibrated against a physical robot";
+
 const ROLE: &str =
     "High-fidelity MuJoCo/PhysX simulation of URDF kinematic chains for the Digital Twin.";
 
@@ -98,6 +102,7 @@ fn run_fk(args: &[String]) -> ExitCode {
 
     match kinematics::forward_kinematics(&chain, &positions) {
         Ok(result) => {
+            eprintln!("{ESTIMATE_NOTICE}");
             for (name, transform) in &result {
                 let p = transform.translation_part();
                 println!("{name}: x={:.6} y={:.6} z={:.6}", p.x, p.y, p.z);
@@ -135,6 +140,7 @@ fn run_fk_checked(args: &[String]) -> ExitCode {
 
     match kinematics::forward_kinematics_checked(&chain, &positions) {
         Ok(result) => {
+            eprintln!("{ESTIMATE_NOTICE}");
             for (name, transform) in &result {
                 let p = transform.translation_part();
                 println!("{name}: x={:.6} y={:.6} z={:.6}", p.x, p.y, p.z);
@@ -211,7 +217,14 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod position_parse_tests {
-    use super::parse_joint_positions;
+    use super::{parse_joint_positions, ESTIMATE_NOTICE};
+
+    #[test]
+    fn the_estimate_notice_says_what_the_numbers_are_and_are_not() {
+        assert!(ESTIMATE_NOTICE.contains("kinematic estimate"));
+        assert!(ESTIMATE_NOTICE.contains("no dynamics"));
+        assert!(ESTIMATE_NOTICE.contains("not calibrated"));
+    }
 
     #[test]
     fn joint_positions_reject_empty_names_and_non_finite_values() {
