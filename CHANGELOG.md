@@ -53,7 +53,7 @@ semantic-versioning judgment calls:
 
 ## [0.0.4] - Real parent/child URDF tree walk
 
-- Found while auditing the code: `src/urdf.rs`
+- Found on code review: `src/urdf.rs`
   used to parse `<joint>` elements in raw XML document order and treat
   that order as the serial chain - real URDF makes no such guarantee (a
   spec-valid file may declare its `<joint>` elements in any order at
