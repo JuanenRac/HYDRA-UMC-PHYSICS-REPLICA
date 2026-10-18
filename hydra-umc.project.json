@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-PHYSICS-REPLICA",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "role": "library",
   "stack": "rust",
   "technologies": [
@@ -11,11 +11,11 @@
     "URDF forward kinematics"
   ],
   "deployment_target": "cm5",
-  "maturity": "established",
+  "maturity": "functional",
   "family": "Digital Twin & Simulation",
   "parent": "HYDRA-UMC-TWIN",
   "build": "cargo build --release",
-  "notes": "Established v0: real forward kinematics and joint-limit validation (`fk`/`validate-limits` subcommands) over a real, documented-partial URDF subset (revolute/continuous/prismatic/fixed joints). src/urdf.rs now walks each joint's real `parent`/`child` link names from the document's own real root link into a single serial chain, in genuine root-to-leaf order regardless of `<joint>` element order in the file - a real branching tree (one link with more than one child joint) is refused, not flattened. Plus a real joint-limits corpus (src/corpus.rs) and a fail-safe `fk-checked` subcommand: forward_kinematics_checked() refuses to compute a world-frame pose for a joint position outside its declared URDF limit, closing the gap where plain fk would silently compute a physically-unreachable pose. 64 tests. Real MuJoCo/PhysX rigid-body and contact simulation stays future work - genuinely blocked on integrating an actual physics-engine dependency, not just unwritten code. Reader hardening: only joints directly under <robot> are read (ros_control transmissions parse), a link with two parents, duplicate joint names, unknown links and a zero axis are errors, a continuous or fixed joint has no position limit, and a misspelt or missing joint in --joints is an error instead of a pass. fk --json prints the position and the rotation as a unit quaternion.",
+  "notes": "Functional v0: real forward kinematics and joint-limit validation (`fk`/`validate-limits` subcommands) over a real, documented-partial URDF subset (revolute/continuous/prismatic/fixed joints). src/urdf.rs now walks each joint's real `parent`/`child` link names from the document's own real root link into a single serial chain, in genuine root-to-leaf order regardless of `<joint>` element order in the file - a real branching tree (one link with more than one child joint) is refused, not flattened. Plus a real joint-limits corpus (src/corpus.rs) and a fail-safe `fk-checked` subcommand: forward_kinematics_checked() refuses to compute a world-frame pose for a joint position outside its declared URDF limit, closing the gap where plain fk would silently compute a physically-unreachable pose. 64 tests. Real MuJoCo/PhysX rigid-body and contact simulation stays future work - genuinely blocked on integrating an actual physics-engine dependency, not just unwritten code. Reader hardening: only joints directly under <robot> are read (ros_control transmissions parse), a link with two parents, duplicate joint names, unknown links and a zero axis are errors, a continuous or fixed joint has no position limit, and a misspelt or missing joint in --joints is an error instead of a pass. fk --json prints the position and the rotation as a unit quaternion.",
   "native_version": {
     "file": "Cargo.toml",
     "pattern": "^version\\s*=\\s*\"(\\d+)\\.(\\d+)\\.(\\d+)\""

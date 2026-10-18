@@ -1,6 +1,6 @@
 [package]
 name = "hydra-umc-physics-replica"
-version = "0.0.7"
+version = "0.0.8"
 edition = "2021"
 description = "URDF forward kinematics and joint-limit validation for serial chains, for the HYDRA-UMC Digital Twin."
 authors = ["JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>"]

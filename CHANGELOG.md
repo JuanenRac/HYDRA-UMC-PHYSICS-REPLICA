@@ -18,6 +18,11 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.8]
+
+- Maturity is functional: nothing here has been verified on real hardware yet.
+- The READMEs say, in the eight languages, what is planned and what has only been tested against fakes, emulators or fixtures, and carry a short safety and security status note.
+
 ## [0.0.7] - A check that was not made is an error, and standard URDF files parse
 
 - **A misspelt or missing joint is no longer a pass.** `validate-limits --joints elbw=5` answered "No limit violations." with exit status 0 because the unknown name was ignored and the limited joint it should have been checked against had no position. A name that the URDF does not have, or one given twice, is now an error (exit 2) for `fk`, `fk-checked` and `validate-limits`, and `validate-limits` needs a position for every limited joint unless `--allow-partial` says that only the joints given are to be checked.
