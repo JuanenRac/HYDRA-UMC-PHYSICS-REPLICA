@@ -16,12 +16,17 @@ const URDF: &str = r#"<robot name="t">
     <origin xyz="1 0 0"/><axis xyz="0 1 0"/><limit lower="-2" upper="2" effort="1" velocity="1"/></joint>
 </robot>"#;
 
+// The file is written once per test process: the tests run in parallel threads, and rewriting the same file in each of them let one binary read it half written.
 fn urdf_file() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("physics-replica-cli-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("robot.urdf");
-    std::fs::write(&path, URDF).unwrap();
-    path
+    static FILE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    FILE.get_or_init(|| {
+        let dir = std::env::temp_dir().join(format!("physics-replica-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("robot.urdf");
+        std::fs::write(&path, URDF).unwrap();
+        path
+    })
+    .clone()
 }
 
 fn run(args: &[&str]) -> (Option<i32>, String, String) {
