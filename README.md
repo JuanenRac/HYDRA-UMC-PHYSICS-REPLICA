@@ -17,6 +17,15 @@
 
 ---
 
+## 📋 At a glance
+
+| | |
+|---|---|
+| Version | `0.0.7` |
+| Maturity | Established |
+| Stack | Rust / roxmltree / URDF forward kinematics |
+| On real hardware | Not yet: no run on real hardware is recorded for this version |
+
 ## 1. 🛠️ TECHNICAL OVERVIEW
 
 **HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the Digital Twin: it reads a URDF serial chain, computes the pose of every joint (forward kinematics) and checks joint positions against their limits. It does not simulate dynamics: there is no rigid-body, contact or friction model and no MuJoCo or PhysX; those are the roadmap.

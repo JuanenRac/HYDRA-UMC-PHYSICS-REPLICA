@@ -17,6 +17,15 @@
 
 ---
 
+## 📋 Auf einen Blick
+
+| | |
+|---|---|
+| Version | `0.0.7` |
+| Reifegrad | Etabliert |
+| Technik | Rust / roxmltree / URDF forward kinematics |
+| Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+
 ## 1. 🛠️ TECHNISCHER ÜBERBLICK
 
 **HYDRA-UMC-PHYSICS-REPLICA** ist das Kinematik-Modul des Digitalen Zwillings: Es liest eine serielle URDF-Kette, berechnet die Pose jedes Gelenks (Vorwärtskinematik) und prüft Gelenkpositionen gegen ihre Grenzen. Es simuliert keine Dynamik: Es gibt kein Starrkörper-, Kontakt- oder Reibungsmodell und weder MuJoCo noch PhysX; das ist die Roadmap.

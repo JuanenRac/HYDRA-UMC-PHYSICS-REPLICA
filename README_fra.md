@@ -17,6 +17,15 @@
 
 ---
 
+## 📋 En un coup d'œil
+
+| | |
+|---|---|
+| Version | `0.0.7` |
+| Maturité | Établi |
+| Technologie | Rust / roxmltree / URDF forward kinematics |
+| Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
+
 ## 1. 🛠️ APERÇU TECHNIQUE
 
 **HYDRA-UMC-PHYSICS-REPLICA** est le module de cinématique du Jumeau Numérique : il lit une chaîne série URDF, calcule la pose de chaque articulation (cinématique directe) et vérifie les positions articulaires par rapport à leurs limites. Il ne simule pas la dynamique : il n'y a ni modèle de corps rigide, de contact ou de frottement, ni MuJoCo ni PhysX ; c'est la feuille de route.

@@ -17,6 +17,15 @@
 
 ---
 
+## 📋 In breve
+
+| | |
+|---|---|
+| Versione | `0.0.7` |
+| Maturità | Consolidato |
+| Tecnologia | Rust / roxmltree / URDF forward kinematics |
+| Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
+
 ## 1. 🛠️ PANORAMICA TECNICA
 
 **HYDRA-UMC-PHYSICS-REPLICA** è il modulo di cinematica del Gemello Digitale: legge una catena seriale URDF, calcola la posa di ogni giunto (cinematica diretta) e controlla le posizioni dei giunti rispetto ai loro limiti. Non simula la dinamica: non ci sono modelli di corpo rigido, contatto o attrito, né MuJoCo né PhysX; sono la roadmap.

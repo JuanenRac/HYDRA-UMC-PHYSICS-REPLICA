@@ -17,6 +17,15 @@
 
 ---
 
+## 📋 De un vistazo
+
+| | |
+|---|---|
+| Versión | `0.0.7` |
+| Madurez | Establecido |
+| Tecnología | Rust / roxmltree / URDF forward kinematics |
+| En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
+
 ## 1. 🛠️ VISIÓN GENERAL TÉCNICA
 
 **HYDRA-UMC-PHYSICS-REPLICA** es el módulo de cinemática del Gemelo Digital: lee una cadena serie URDF, calcula la pose de cada articulación (cinemática directa) y comprueba las posiciones de las articulaciones frente a sus límites. No simula dinámica: no hay modelo de cuerpo rígido, contacto ni fricción, ni MuJoCo ni PhysX; eso es la hoja de ruta.
