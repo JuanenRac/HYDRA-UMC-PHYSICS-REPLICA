@@ -40,6 +40,9 @@ pub enum CheckedKinematicsError {
     /// limit - the requested configuration is not physically reachable,
     /// so no world-frame transform is computed for it at all.
     LimitViolation(Vec<LimitViolation>),
+    /// A revolute or prismatic joint has no `<limit>`: its position cannot be
+    /// checked, and a checked pose for it would be a claim nothing supports.
+    MissingLimits(Vec<String>),
 }
 
 impl std::fmt::Display for CheckedKinematicsError {
@@ -49,6 +52,11 @@ impl std::fmt::Display for CheckedKinematicsError {
             CheckedKinematicsError::LimitViolation(violations) => {
                 write!(f, "{} joint limit violation(s)", violations.len())
             }
+            CheckedKinematicsError::MissingLimits(joints) => write!(
+                f,
+                "joint(s) {} have no <limit>: their positions cannot be checked",
+                joints.join(", ")
+            ),
         }
     }
 }
@@ -113,6 +121,10 @@ pub fn forward_kinematics_checked(
     chain: &Chain,
     positions: &HashMap<String, f64>,
 ) -> Result<Vec<(String, Mat4)>, CheckedKinematicsError> {
+    let missing = crate::limits::joints_without_limits(chain);
+    if !missing.is_empty() {
+        return Err(CheckedKinematicsError::MissingLimits(missing));
+    }
     let violations = validate_limits(chain, positions);
     if !violations.is_empty() {
         return Err(CheckedKinematicsError::LimitViolation(violations));
@@ -338,5 +350,18 @@ mod tests {
             let err = forward_kinematics_checked(&chain, &positions).unwrap_err();
             assert!(matches!(err, CheckedKinematicsError::LimitViolation(_)));
         }
+    }
+
+    #[test]
+    fn a_checked_pose_is_refused_for_a_moving_joint_with_no_limit() {
+        let chain = Chain {
+            joints: vec![revolute("j1", 1.0, Vec3::new(0.0, 0.0, 1.0), None)],
+        };
+        let mut positions = HashMap::new();
+        positions.insert("j1".to_string(), 1000.0);
+        assert_eq!(
+            forward_kinematics_checked(&chain, &positions).unwrap_err(),
+            CheckedKinematicsError::MissingLimits(vec!["j1".to_string()])
+        );
     }
 }

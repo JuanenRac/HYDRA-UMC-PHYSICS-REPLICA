@@ -26,9 +26,30 @@ Bare invocation (no arguments) prints identity/version/role and exits `0`:
 
 ```
 $ hydra-umc-physics-replica
-HYDRA-UMC-PHYSICS-REPLICA v0.0.3
-High-fidelity MuJoCo/PhysX simulation of URDF kinematic chains for the Digital Twin.
+HYDRA-UMC-PHYSICS-REPLICA v0.0.7
+URDF forward kinematics and joint-limit validation for serial chains (no dynamics, no physics engine).
 ```
+
+## Reader rules
+
+* Only `<joint>` elements that are direct children of `<robot>` are read: the `<joint>` elements inside a
+  `<transmission>` (ros_control) have no type and are not part of the tree.
+* Joint names are unique, a link has at most one parent and, when the file declares `<link>` elements, every
+  link a joint names is declared.
+* A revolute, continuous or prismatic joint needs an `<axis>` of non-zero length.
+* Position limits belong to revolute and prismatic joints. A continuous joint's `<limit>` gives effort and
+  velocity only (its `lower`/`upper` are ignored, they used to lock it at 0), and a fixed joint has none.
+* A revolute or prismatic joint with no `<limit>` cannot be checked: `fk-checked` and `validate-limits` exit `2`
+  naming it.
+* Not supported: `<mimic>`, `<safety_controller>`, floating and planar joints, branching trees.
+* Units are those of URDF: metres and radians.
+* A name in `--joints` that the URDF does not have, or one given twice, is an error (exit `2`).
+
+## Output
+
+`fk` and `fk-checked` print `name: x=.. y=.. z=..` per joint (metres), or with `--json` an array of
+`{"joint", "position": {x, y, z}, "quaternion": {w, x, y, z}}` with nine decimals; the rotation is a unit
+quaternion with `w >= 0`.
 
 ## Fixture used below
 
@@ -151,11 +172,15 @@ $ hydra-umc-physics-replica fk-checked --urdf arm.urdf --joints "shoulder=0.5,el
 LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 ```
 
-### `validate-limits --urdf PATH --joints "name=value,..."`
+### `validate-limits --urdf PATH --joints "name=value,..." [--allow-partial]`
 
 Reports every joint whose given position is outside its own `<limit>` —
 without computing any pose at all (unlike `fk-checked`, which refuses to
-proceed on a violation; `validate-limits` is the standalone check).
+proceed on a violation; `validate-limits` is the standalone check). A
+position within 1e-9 of a limit is inside it (unit-conversion noise). Every
+joint that has a limit needs a position in `--joints`: a joint left out
+would be a check that was not made, so it is an error (exit `2`) unless
+`--allow-partial` says that only the joints given are to be checked.
 
 **No violations** (exit `0`):
 
@@ -177,7 +202,7 @@ LIMIT VIOLATION: joint 'shoulder' = 10.000000 (allowed [-3.141590, 3.141590])
 |------|---------|
 | `0` | ok — pose computed (`fk`/`fk-checked`), or no limit violations (`validate-limits`) |
 | `1` | a real limit violation — `fk-checked` refused to compute a pose, or `validate-limits` reported one or more violations |
-| `2` | usage/input error — missing `--urdf`/`--joints` value, unreadable or malformed URDF file, or a malformed `--joints` entry |
+| `2` | usage/input error — missing `--urdf`/`--joints` value, unreadable or malformed URDF file, a malformed, unknown or repeated `--joints` entry, a limited joint with no position (`validate-limits`), or a revolute/prismatic joint with no `<limit>` (`fk-checked`, `validate-limits`) |
 
 ## Not yet wired in
 

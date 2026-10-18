@@ -18,6 +18,17 @@ semantic-versioning judgment calls:
 
 ---
 
+## [0.0.7] - A check that was not made is an error, and standard URDF files parse
+
+- **A misspelt or missing joint is no longer a pass.** `validate-limits --joints elbw=5` answered "No limit violations." with exit status 0 because the unknown name was ignored and the limited joint it should have been checked against had no position. A name that the URDF does not have, or one given twice, is now an error (exit 2) for `fk`, `fk-checked` and `validate-limits`, and `validate-limits` needs a position for every limited joint unless `--allow-partial` says that only the joints given are to be checked.
+- **A file with a link that has two parents no longer runs the process out of memory.** A cycle reachable from the root (`base->l1`, `l1->l2`, `l2->l1`) made the walk never end. A link that is the child of two joints is now an error, and the walk keeps a visited set.
+- **Files with `<transmission>` parse.** Every `<joint>` anywhere in the document was read, including the ones inside `<transmission>` (the standard ros_control layout, in most real URDFs), which have no type and failed the whole file. Only the joints that are direct children of `<robot>` are read.
+- **A continuous joint is no longer locked at 0.** Its `<limit effort velocity/>` has no `lower`/`upper`, which defaulted to 0; position limits now belong to revolute and prismatic joints only, and a fixed joint has none.
+- **Models that cannot be checked are refused.** A moving joint with a zero-length axis (it "moved" without effect), a revolute or prismatic joint without `<limit>` in `fk-checked` and `validate-limits`, duplicate joint names and joints naming a link that no `<link>` declares are errors.
+- **`fk --json` and `fk-checked --json`** print the position and the rotation as a unit quaternion (`w >= 0`) for every joint, not only the translation.
+- A position within 1e-9 of a limit counts as inside it (degree-to-radian conversion noise). `Cargo.lock` is tracked, so builds resolve the same versions.
+- Documentation: the title, badges, package description and manifest no longer present MuJoCo, PhysX, gravity, inertia or friction (nothing of that exists: it is forward kinematics and limit checking), the README states what the reader accepts and does not, units, and that HYDRA-UMC-TWIN does not call it yet, `docs/CLI_REFERENCE.md` is current, and the manifest `build` command has no stray dot. 64 tests.
+
 ## [0.0.6] - Poses are labelled as estimates
 
 - `fk` and `fk-checked` now print a note on stderr saying the numbers are a kinematic

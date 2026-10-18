@@ -6,12 +6,12 @@
 
 <p align="center">🇺🇸 <b>English</b> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 📐 High-Fidelity MuJoCo/PhysX Simulation of URDF Kinematic Chains
+### 📐 URDF Forward Kinematics & Joint-Limit Validation
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Language-C++%20%2F%20Rust-orange.svg" alt="Tech">
+  <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Stage-Established%20v0-brightgreen.svg" alt="Established v0 stage">
 </p>
 
@@ -19,9 +19,9 @@
 
 ## 1. 🛠️ TECHNICAL OVERVIEW
 
-**HYDRA-UMC-PHYSICS-REPLICA** is the core physical simulation module of the Digital Twin. It specializes in the low-level calculation of rigid body dynamics, joint constraints, and contact forces for the entire robot catalog.
+**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the Digital Twin: it reads a URDF serial chain, computes the pose of every joint (forward kinematics) and checks joint positions against their limits. It does not simulate dynamics: there is no rigid-body, contact or friction model and no MuJoCo or PhysX; those are the roadmap.
 
-By integrating state-of-the-art solvers like MuJoCo or NVIDIA PhysX, it provides the mathematical foundation for realistic behavior, including gravity, payload inertia, and surface friction for Pick-and-Place tasks.
+Units are those of URDF (metres and radians). `fk` prints the position of each joint; with `--json` it prints the position and the rotation as a unit quaternion.
 
 ### Key Features:
 * 📐 **Kinematic Validation (v0):** real forward kinematics and joint-limit checking over a (documented-partial) URDF subset - see "Honesty check" below for exactly what runs today.
@@ -29,6 +29,7 @@ By integrating state-of-the-art solvers like MuJoCo or NVIDIA PhysX, it provides
 * 🏗️ **URDF to Physics (v0, partial):** reads real `<joint>` elements (type/origin/axis/limit) and walks each joint's real `parent`/`child` link names from the document's own real root link into a chain, in genuine root-to-leaf order regardless of `<joint>` element order in the file. *Not yet real:* collision mesh generation - that's still the "physics" half of this feature.
 * ⚡ **Real-Time Performance (planned):** parallelized solving for multi-robot workspaces - depends on a real physics-engine integration existing first.
 * 🌡️ **Thermal Simulation (planned):** experimental support for emulating heat dissipation in tool heads (T12/Laser).
+* 📋 **What the URDF reader does and does not do (real today):** only `<joint>` elements directly under `<robot>` are read (the joints inside `<transmission>` are ignored), so ros_control files parse; a revolute or prismatic joint needs an `<axis>` of non-zero length and a `<limit>` (without one, `fk-checked` and `validate-limits` refuse to check it); a continuous joint's `<limit>` gives effort and velocity only, and a fixed joint has none; duplicate joint names, a link with two parents and links that no `<link>` declares are errors; `<mimic>`, `<safety_controller>` and floating or planar joints are not supported; a name in `--joints` that the URDF does not have, or one given twice, is an error, and `validate-limits` needs a position for every limited joint unless `--allow-partial` is given (a check that was not made is never reported as "No limit violations").
 
 **Honesty check - what actually runs today:** `fk --urdf PATH --joints "j1=0.5,..."` computes real per-joint world-frame positions by chaining URDF joint transforms, regardless of whether a position is within its declared limit; `fk-checked` runs the same computation but checks every position against `validate-limits`'s real limit check FIRST, refusing to compute (or report) a pose at all if anything is out of range; `validate-limits --urdf PATH --joints "..."` reports real out-of-range joints on its own. All three are pure kinematics - no rigid-body dynamics, no contact forces, no MuJoCo/PhysX solver is wired in yet, and the URDF reader walks a real `parent`/`child` link tree into a single serial chain, refusing (not flattening) a genuinely branching one (see `urdf.rs`'s own module docs for why). See [`CHANGELOG.md`](CHANGELOG.md) for exactly what shipped, and the Roadmap below for what's still ahead.
 
@@ -55,7 +56,7 @@ flowchart LR
 
 * **Why this simulation has no `hardware/`/`firmware/`/`os/` folders.** Pure software - no board of its own, so those folders were pruned rather than left empty.
 * **Why it's a sibling, not a submodule, of HYDRA-UMC-TWIN.** The physics solver runs on its own tick rate, independent from rendering - keeping it a separate process means a slow physics step doesn't stall HYDRA-UMC-TWIN's own frame rate, and either can be swapped/upgraded (e.g. MuJoCo vs PhysX) without touching the other.
-* **How this fits the rest of the ecosystem.** Feeds HYDRA-UMC-TWIN's own renderer with real rigid-body/contact simulation - the physical plausibility check behind 'if it works in the Twin, it works on the floor.'
+* **How this fits the rest of the ecosystem.** A child of HYDRA-UMC-TWIN by design. Today HYDRA-UMC-TWIN does not call it: the physical plausibility check behind "if it works in the Twin, it works on the floor" is planned, not built.
 * **Why v0 refuses a real branching URDF instead of flattening it.** Found while auditing the code: v0 used to parse `<joint>` elements in raw document order and treat that order as the chain, which is wrong for any spec-valid URDF that declares its joints out of tree order. Fixed: every joint's real `parent`/`child` link names are now walked from the document's own real root link into genuine root-to-leaf order. `Chain` itself is still a flat `Vec<Joint>`, so a real branch (one link with more than one child joint) has no single order to flatten it into - refused with a real error rather than silently keeping one branch and dropping the other. Honest for `HYDRA-UMC-EDITOR-URDF`'s own catalog, which is entirely single serial arms today (see `urdf.rs`).
 * **Why `roxmltree` is the only dependency, not a full physics-engine binding yet.** Real forward kinematics and limit checking need nothing beyond reading XML attributes and doing matrix math by hand (`transform.rs`) - adding a MuJoCo/PhysX FFI binding for that would be dependency weight with no real payoff until actual rigid-body/contact simulation is being built.
 * **Why `fk-checked` is a new subcommand instead of changing `fk` in place.** `fk` is the existing low-level pure-math utility - some callers (e.g. tuning a limit itself) genuinely want the unchecked pose for an out-of-range value. `fk-checked` adds the fail-safe, limit-gated entry point real callers should use, without silently changing what `fk` has always meant.
@@ -101,7 +102,7 @@ Requires the Rust toolchain (`cargo`/`rustc`, install via [rustup](https://rustu
 
 ```bash
 # Linux / macOS
-./build.sh   # odometer version bump, `cargo test` (50 tests), then `cargo build --release`
+./build.sh   # odometer version bump, `cargo test` (64 tests), then `cargo build --release`
 ./run.sh     # runs target/release/hydra-umc-physics-replica, prints name + version + role
 ```
 

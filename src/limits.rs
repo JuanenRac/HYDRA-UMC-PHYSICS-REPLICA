@@ -11,7 +11,26 @@
 
 use std::collections::HashMap;
 
-use crate::urdf::Chain;
+use crate::urdf::{Chain, JointType};
+
+/// The tolerance a position may exceed a limit by: absorbs the noise of
+/// converting degrees to radians and back without letting a real overshoot by.
+pub const LIMIT_TOLERANCE: f64 = 1e-9;
+
+/// The moving joints whose position limits the URDF does not give. URDF
+/// requires `<limit>` for a revolute or prismatic joint; without it nothing
+/// can say a position is out of range, so a "checked" result for such a
+/// joint would mean nothing.
+pub fn joints_without_limits(chain: &Chain) -> Vec<String> {
+    chain
+        .joints
+        .iter()
+        .filter(|j| {
+            matches!(j.joint_type, JointType::Revolute | JointType::Prismatic) && j.limit.is_none()
+        })
+        .map(|j| j.name.clone())
+        .collect()
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LimitViolation {
@@ -48,7 +67,7 @@ pub fn validate_limits(chain: &Chain, positions: &HashMap<String, f64>) -> Vec<L
             });
             continue;
         }
-        if value < lower || value > upper {
+        if value < lower - LIMIT_TOLERANCE || value > upper + LIMIT_TOLERANCE {
             violations.push(LimitViolation {
                 joint: joint.name.clone(),
                 value,
@@ -163,5 +182,39 @@ mod tests {
         let violations = validate_limits(&chain, &positions);
         assert_eq!(violations.len(), 1);
         assert_eq!(violations[0].joint, "j1");
+    }
+
+    #[test]
+    fn a_position_a_hair_past_the_limit_from_unit_conversion_is_not_a_violation() {
+        let chain = Chain {
+            joints: vec![joint_with_limit("j1", -1.0, 1.0)],
+        };
+        let mut positions = HashMap::new();
+        positions.insert("j1".to_string(), 1.0 + 1e-12);
+        assert!(validate_limits(&chain, &positions).is_empty());
+        positions.insert("j1".to_string(), 1.0 + 1e-6);
+        assert_eq!(validate_limits(&chain, &positions).len(), 1);
+    }
+
+    #[test]
+    fn joints_that_need_a_limit_and_have_none_are_listed() {
+        let chain = Chain {
+            joints: vec![
+                Joint {
+                    limit: None,
+                    ..joint_with_limit("revolute_no_limit", 0.0, 0.0)
+                },
+                Joint {
+                    joint_type: JointType::Continuous,
+                    limit: None,
+                    ..joint_with_limit("continuous", 0.0, 0.0)
+                },
+                joint_with_limit("limited", -1.0, 1.0),
+            ],
+        };
+        assert_eq!(
+            joints_without_limits(&chain),
+            vec!["revolute_no_limit".to_string()]
+        );
     }
 }

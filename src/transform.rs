@@ -125,6 +125,55 @@ impl Mat4 {
         )
     }
 
+    /// The rotation as a unit quaternion `(w, x, y, z)`, with the sign
+    /// chosen so that `w >= 0` (a quaternion and its negative are the same
+    /// rotation, and a canonical sign makes the numbers comparable).
+    pub fn quaternion(&self) -> (f64, f64, f64, f64) {
+        let m = &self.m;
+        let trace = m[0][0] + m[1][1] + m[2][2];
+        let (w, x, y, z) = if trace > 0.0 {
+            let s = (trace + 1.0).sqrt() * 2.0;
+            (
+                0.25 * s,
+                (m[2][1] - m[1][2]) / s,
+                (m[0][2] - m[2][0]) / s,
+                (m[1][0] - m[0][1]) / s,
+            )
+        } else if m[0][0] > m[1][1] && m[0][0] > m[2][2] {
+            let s = (1.0 + m[0][0] - m[1][1] - m[2][2]).sqrt() * 2.0;
+            (
+                (m[2][1] - m[1][2]) / s,
+                0.25 * s,
+                (m[0][1] + m[1][0]) / s,
+                (m[0][2] + m[2][0]) / s,
+            )
+        } else if m[1][1] > m[2][2] {
+            let s = (1.0 + m[1][1] - m[0][0] - m[2][2]).sqrt() * 2.0;
+            (
+                (m[0][2] - m[2][0]) / s,
+                (m[0][1] + m[1][0]) / s,
+                0.25 * s,
+                (m[1][2] + m[2][1]) / s,
+            )
+        } else {
+            let s = (1.0 + m[2][2] - m[0][0] - m[1][1]).sqrt() * 2.0;
+            (
+                (m[1][0] - m[0][1]) / s,
+                (m[0][2] + m[2][0]) / s,
+                (m[1][2] + m[2][1]) / s,
+                0.25 * s,
+            )
+        };
+        let norm = (w * w + x * x + y * y + z * z).sqrt();
+        let sign = if w < 0.0 { -1.0 } else { 1.0 };
+        (
+            sign * w / norm,
+            sign * x / norm,
+            sign * y / norm,
+            sign * z / norm,
+        )
+    }
+
     /// The translation column - this transform's world-frame position.
     pub fn translation_part(&self) -> Vec3 {
         Vec3::new(self.m[0][3], self.m[1][3], self.m[2][3])
@@ -196,5 +245,26 @@ mod tests {
     fn translation_part_extracts_position() {
         let t = Mat4::translation(Vec3::new(1.0, 2.0, 3.0));
         assert_vec3_close(t.translation_part(), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn the_quaternion_of_known_rotations() {
+        let (w, x, y, z) = Mat4::identity().quaternion();
+        assert!((w - 1.0).abs() < 1e-12 && x.abs() < 1e-12 && y.abs() < 1e-12 && z.abs() < 1e-12);
+        // 90 degrees about z: w = z = 0.7071...
+        let (w, x, y, z) =
+            Mat4::rotation_axis_angle(Vec3::new(0.0, 0.0, 1.0), std::f64::consts::FRAC_PI_2)
+                .quaternion();
+        let h = std::f64::consts::FRAC_1_SQRT_2;
+        assert!(
+            (w - h).abs() < 1e-12 && x.abs() < 1e-12 && y.abs() < 1e-12 && (z - h).abs() < 1e-12
+        );
+        // 180 degrees about x: a rotation whose trace is -1
+        let (w, x, _, _) =
+            Mat4::rotation_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f64::consts::PI).quaternion();
+        assert!(w.abs() < 1e-12 && (x - 1.0).abs() < 1e-12);
+        // the sign is canonical: w is never negative
+        let (w, _, _, _) = Mat4::rotation_axis_angle(Vec3::new(0.0, 1.0, 0.0), 4.0).quaternion();
+        assert!(w >= 0.0);
     }
 }

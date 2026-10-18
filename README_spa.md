@@ -6,12 +6,12 @@
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | 🇪🇸 <b>Español</b> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 📐 Simulación MuJoCo/PhysX de Alta Fidelidad de Cadenas Cinemáticas URDF
+### 📐 Cinemática directa de URDF y validación de límites de articulación
 
 <p align="center">
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Lenguaje-C++%20%2F%20Rust-orange.svg" alt="Tech">
+  <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
+  <img src="https://img.shields.io/badge/Lenguaje-Rust-orange.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Etapa-Establecido%20v0-brightgreen.svg" alt="Etapa establecido v0">
 </p>
 
@@ -19,9 +19,9 @@
 
 ## 1. 🛠️ VISIÓN GENERAL TÉCNICA
 
-**HYDRA-UMC-PHYSICS-REPLICA** es el módulo de simulación física central del Digital Twin. Se especializa en el cálculo de bajo nivel de la dinámica de cuerpos rígidos, restricciones de articulaciones y fuerzas de contacto para todo el catálogo de robots.
+**HYDRA-UMC-PHYSICS-REPLICA** es el módulo de cinemática del Gemelo Digital: lee una cadena serie URDF, calcula la pose de cada articulación (cinemática directa) y comprueba las posiciones de las articulaciones frente a sus límites. No simula dinámica: no hay modelo de cuerpo rígido, contacto ni fricción, ni MuJoCo ni PhysX; eso es la hoja de ruta.
 
-Al integrar solvers de vanguardia como MuJoCo o NVIDIA PhysX, proporciona la base matemática para un comportamiento realista, incluyendo la gravedad, la inercia de la carga y la fricción superficial para tareas de Pick-and-Place.
+Las unidades son las de URDF (metros y radianes). `fk` imprime la posición de cada articulación; con `--json` imprime la posición y la rotación como cuaternión unitario.
 
 ### Características Clave:
 * 📐 **Validación Cinemática (v0):** cinemática directa real y comprobación real de límites de articulación sobre un subconjunto de URDF (documentado y parcial) - ver "Comprobación de honestidad" abajo para lo que funciona hoy exactamente.
@@ -29,6 +29,7 @@ Al integrar solvers de vanguardia como MuJoCo o NVIDIA PhysX, proporciona la bas
 * 🏗️ **URDF a Física (v0, parcial):** lee elementos `<joint>` reales (tipo/origen/eje/límite) de un fichero URDF en una cadena. *Todavía no real:* la generación de mallas de colisión - esa sigue siendo la mitad "física" de esta característica.
 * ⚡ **Rendimiento en Tiempo Real (planeado):** resolución paralelizada para espacios de trabajo multi-robot - depende de que exista antes una integración real de motor de física.
 * 🌡️ **Simulación Térmica (planeado):** soporte experimental para emular la disipación de calor en cabezales de herramientas (T12/Láser).
+* 📋 **Qué hace y qué no hace el lector de URDF (real hoy):** solo se leen los elementos `<joint>` directamente bajo `<robot>` (los de `<transmission>` se ignoran), así que los ficheros de ros_control se leen; una articulación revolute o prismatic necesita un `<axis>` de longitud no nula y un `<limit>` (sin él, `fk-checked` y `validate-limits` se niegan a comprobarla); el `<limit>` de una continuous da solo esfuerzo y velocidad, y una fixed no tiene; nombres de articulación duplicados, un enlace con dos padres y enlaces que ningún `<link>` declara son errores; `<mimic>`, `<safety_controller>` y articulaciones floating o planar no están soportados; un nombre en `--joints` que el URDF no tiene, o dado dos veces, es un error, y `validate-limits` necesita una posición para cada articulación con límite salvo que se pase `--allow-partial` (una comprobación que no se hizo nunca se informa como "No limit violations").
 
 **Comprobación de honestidad - qué funciona hoy de verdad:** `fk --urdf RUTA --joints "j1=0.5,..."` calcula posiciones reales en el mundo por articulación encadenando las transformaciones de las articulaciones del URDF, sin importar si una posición está dentro de su límite declarado; `fk-checked` ejecuta el mismo cálculo pero comprueba primero cada posición contra la verificación real de `validate-limits`, negándose a calcular (o reportar) ninguna pose si algo está fuera de rango; `validate-limits --urdf RUTA --joints "..."` reporta articulaciones reales fuera de rango por su cuenta. Los tres son cinemática pura - sin dinámica de cuerpo rígido, sin fuerzas de contacto, sin ningún solver MuJoCo/PhysX conectado todavía, y el lector de URDF recorre un árbol real de enlaces `parent`/`child` hacia una única cadena serial, rechazando (sin aplanarlo) un árbol genuinamente ramificado (ver la documentación propia del módulo `urdf.rs` para el porqué). Ver [`CHANGELOG.md`](CHANGELOG.md) para lo entregado exactamente, y la Hoja de Ruta abajo para lo que sigue por delante.
 
@@ -56,7 +57,7 @@ flowchart LR
 
 * **Por qué esta simulación no tiene carpetas `hardware/`/`firmware/`/`os/`.** Software puro - sin placa propia, así que esas carpetas se podaron en vez de dejarlas vacías.
 * **Por qué es hermana, no un submódulo, de HYDRA-UMC-TWIN.** El solucionador de física corre a su propia frecuencia de tick, independiente del renderizado - mantenerlo como proceso separado significa que un paso de física lento no bloquea la propia tasa de fotogramas de HYDRA-UMC-TWIN, y cualquiera de los dos puede sustituirse/actualizarse (ej. MuJoCo frente a PhysX) sin tocar el otro.
-* **Cómo encaja en el resto del ecosistema.** Alimenta al propio renderizador de HYDRA-UMC-TWIN con simulación real de cuerpo rígido/contactos - la comprobación de plausibilidad física detrás de 'si funciona en el Gemelo, funciona en la planta'.
+* **Cómo encaja en el resto del ecosistema.** Hijo de HYDRA-UMC-TWIN por diseño. Hoy HYDRA-UMC-TWIN no lo llama: la comprobación de plausibilidad física detrás de "si funciona en el Twin, funciona en planta" está prevista, no construida.
 * **Por qué v0 rechaza un URDF con ramificación real en vez de aplanarlo.** Encontrado al auditar el código: v0 antes analizaba los elementos `<joint>` en el orden bruto del documento y trataba ese orden como la cadena, lo cual es incorrecto para cualquier URDF válido según la especificación que declare sus articulaciones fuera del orden del árbol. Arreglado: los nombres de enlace `parent`/`child` reales de cada articulación ahora se recorren desde el enlace raíz real del documento en un orden real de raíz a hoja. `Chain` en sí sigue siendo un `Vec<Joint>` plano, así que una ramificación real (un enlace con más de una articulación hija) no tiene un único orden en el que aplanarla - se rechaza con un error real en vez de quedarse silenciosamente con una rama y descartar la otra. Honesto para el propio catálogo de `HYDRA-UMC-EDITOR-URDF`, que hoy son enteramente brazos seriales únicos (ver `urdf.rs`).
 * **Por qué `roxmltree` es la única dependencia, todavía no un binding completo de motor de física.** La cinemática directa y la comprobación de límites reales no necesitan nada más que leer atributos XML y hacer álgebra matricial a mano (`transform.rs`) - añadir un binding FFI de MuJoCo/PhysX para eso sería peso de dependencia sin beneficio real hasta que se esté construyendo simulación real de cuerpo rígido/contactos.
 * **Por qué `fk-checked` es un subcomando nuevo en vez de cambiar `fk` in situ.** `fk` es la utilidad de bajo nivel existente, matemática pura - algunos llamadores (ej. ajustar un límite en sí mismo) genuinamente quieren la pose sin verificar para un valor fuera de rango. `fk-checked` añade el punto de entrada a prueba de fallos, con verja de límites, que los llamadores reales deberían usar, sin cambiar en silencio lo que `fk` siempre ha significado.
@@ -102,7 +103,7 @@ Requiere el toolchain de Rust (`cargo`/`rustc`, instalar vía [rustup](https://r
 
 ```bash
 # Linux / macOS
-./build.sh   # bump de version cuentakilometros, `cargo test` (50 tests), luego `cargo build --release`
+./build.sh   # bump de version cuentakilometros, `cargo test` (64 tests), luego `cargo build --release`
 ./run.sh     # ejecuta target/release/hydra-umc-physics-replica, imprime nombre + version + rol
 ```
 

@@ -6,12 +6,12 @@
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 📐 URDF 運動学チェーンの高忠実度 MuJoCo/PhysX シミュレーション
+### 📐 URDF の順運動学と関節リミット検証
 
 <p align="center">
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Language-C++%20%2F%20Rust-orange.svg" alt="Tech">
+  <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Stage-Established%20v0-brightgreen.svg" alt="Established v0 stage">
 </p>
 
@@ -19,13 +19,9 @@
 
 ## 1. 🛠️ 技術概要
 
-**HYDRA-UMC-PHYSICS-REPLICA** は、デジタルツインの中核となる物理
-シミュレーションモジュールです。ロボットカタログ全体にわたる剛体力学、
-関節拘束、接触力の低レベル計算に特化しています。
+**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF のシリアルチェーンを読み込み、各関節の姿勢（順運動学）を計算し、関節位置をそのリミットと照合します。動力学はシミュレートしません。剛体・接触・摩擦のモデルも MuJoCo や PhysX もなく、それらはロードマップです。
 
-MuJoCo や NVIDIA PhysX のような最先端のソルバーを統合することで、重力、
-ペイロード慣性、ピック＆プレースタスクにおける表面摩擦を含む、リアル
-な挙動のための数学的基盤を提供します。
+単位は URDF のもの（メートルとラジアン）です。`fk` は各関節の位置を出力し、`--json` を付けると位置と単位クォータニオンの回転を出力します。
 
 ### 主な機能：
 * 📐 **運動学的検証（v0）：** （文書化された部分的な）URDF サブセット上での実際の順運動学と実際の関節可動域チェック——今日実際に何が動くのかは下記「正直な現状確認」を参照してください。
@@ -33,6 +29,7 @@ MuJoCo や NVIDIA PhysX のような最先端のソルバーを統合するこ�
 * 🏗️ **URDF から物理モデルへ（v0、部分的）：** 実際の `<joint>` 要素(タイプ/原点/軸/可動域)を読み取り、各関節の実際の `parent`/`child` リンク名を文書自身の実際のルートリンクからチェーンへと辿ります(ファイル内の `<joint>` 要素の順序に関わらず、真のルートからリーフへの順序になります)。*まだ実際には存在しないもの：* 衝突メッシュの生成——それはこの機能の「物理」側半分として、今も未実装のままです。
 * ⚡ **リアルタイム性能（計画中）：** マルチロボットワークスペース向けの並列化された求解——まず実際の物理エンジン統合が存在することが前提です。
 * 🌡️ **熱シミュレーション（計画中）：** 工具ヘッド（T12/レーザー）における放熱をエミュレートする実験的サポート。
+* 📋 **URDF リーダーができることとできないこと（現在実装済み）：** `<robot>` 直下の `<joint>` 要素だけを読み込みます（`<transmission>` 内の関節は無視されるため ros_control のファイルも読めます）。revolute と prismatic の関節には長さが 0 でない `<axis>` と `<limit>` が必要です（`<limit>` がなければ `fk-checked` と `validate-limits` は検査を拒否します）。continuous 関節の `<limit>` は力と速度だけを与え、fixed 関節にはありません。関節名の重複、2 つの親を持つリンク、どの `<link>` も宣言していないリンクはエラーです。`<mimic>`、`<safety_controller>`、floating・planar 関節は未対応です。`--joints` に URDF にない名前や重複した名前があるとエラーになり、`validate-limits` は `--allow-partial` を付けない限りリミットのある全関節の位置を必要とします（行われなかった検査が "No limit violations" と報告されることはありません）。
 
 **正直な現状確認 —— 今日実際に動くもの：** `fk --urdf パス --joints "j1=0.5,..."` は、URDF の関節変換を連鎖させることで、その位置が宣言された可動域内にあるかどうかに関わらず、各関節の実際のワールド座標位置を計算します。`fk-checked` は同じ計算を行いますが、まず各位置を `validate-limits` の実際のチェックに通し、何かが範囲外であればポーズの計算（および報告）自体を拒否します。`validate-limits --urdf パス --joints "..."` は、実際に可動域を超えた関節を単独で報告します。3 つとも純粋な運動学です——剛体力学も、接触力も、MuJoCo/PhysX ソルバーの接続もまだなく、URDF リーダーは実際の `parent`/`child` リンクツリーを辿って単一の直列チェーンを構築し、本当に分岐しているツリーは(平坦化せず)拒否します（理由は `urdf.rs` 自身のモジュールドキュメントを参照）。実際に出荷済みの内容は [`CHANGELOG.md`](CHANGELOG.md) を、まだ残っている作業は下記のロードマップを参照してください。
 
@@ -60,7 +57,7 @@ flowchart LR
 
 * **本シミュレーションに `hardware/`/`firmware/`/`os/` フォルダがない理由。** 純粋なソフトウェアであり、独自の基板を持たないため、これらのフォルダは空のまま残すのではなく意図的に省略されています。
 * **HYDRA-UMC-TWIN のサブモジュールではなく兄弟プロジェクトである理由。** 物理ソルバーはレンダリングとは独立した独自のティックレートで動作します——独立したプロセスとして保つことで、遅い物理ステップが HYDRA-UMC-TWIN 自身のフレームレートを停滞させることはなく、どちらか一方を（例えば MuJoCo と PhysX の間で）入れ替え/アップグレードしても、もう一方に影響を与えません。
-* **エコシステムの他の部分との関係。** HYDRA-UMC-TWIN 自身のレンダラーに実際の剛体/接触シミュレーションを供給します——これは「ツイン上で動作すれば、現場でも動作する」という理念を支える物理的妥当性の検証です。
+* **エコシステムの他の部分との関係。** 設計上は HYDRA-UMC-TWIN の子プロジェクトです。現在 HYDRA-UMC-TWIN はこれを呼び出していません。「Twin で動けば現場でも動く」の裏付けとなる物理的な妥当性チェックは計画中で、まだ作られていません。
 * **v0 が実際に分岐する URDF を平坦化せずに拒否する理由。** コードを監査していて発見——v0 は以前、`<joint>` 要素を生の文書順でパースし、その順序をチェーンとして扱っていましたが、これは関節をツリー順以外で宣言する仕様準拠の URDF に対しては誤りです。修正済み——各関節の実際の `parent`/`child` リンク名は、文書自身の実際のルートリンクから真のルートからリーフへの順序で辿られるようになりました。`Chain` 自体は依然としてフラットな `Vec<Joint>` のため、実際の分岐（1つのリンクに複数の子関節がある場合）には平坦化できる単一の順序が存在せず、一方の枝を黙って保持しもう一方を捨てるのではなく、実際のエラーで拒否されます。今日ほぼすべてが単一の直列アームである `HYDRA-UMC-EDITOR-URDF` 自身のカタログに対しては正直な扱いです（`urdf.rs` を参照）。
 * **`roxmltree` が唯一の依存関係であり、まだ完全な物理エンジンバインディングではない理由。** 実際の順運動学と実際の可動域チェックに必要なのは、XML 属性の読み取りと手書きの行列演算（`transform.rs`）だけです——実際の剛体/接触シミュレーションの構築が始まるまでは、そのために MuJoCo/PhysX の FFI バインディングを追加しても、実際の見返りのない依存関係の重みが増えるだけです。
 * **`fk-checked` が `fk` をその場で変更するのではなく新しいサブコマンドである理由。** `fk` は既存の低レベルな純粋数学ユーティリティです——一部の呼び出し元（例えば可動域自体を調整する場合）は、範囲外の値に対する未チェックのポーズを実際に必要とします。`fk-checked` は、`fk` がこれまで意味してきたものを黙って変更することなく、実際の呼び出し元が使うべきフェイルセーフで可動域チェック付きのエントリポイントを追加します。
@@ -107,7 +104,7 @@ Rust ツールチェーン（`cargo`/`rustc`、[rustup](https://rustup.rs) 経�
 
 ```bash
 # Linux / macOS
-./build.sh   # オドメーター式バージョンインクリメント、`cargo test`（50 件のテスト）、その後 `cargo build --release`
+./build.sh   # オドメーター式バージョンインクリメント、`cargo test`（64 件のテスト）、その後 `cargo build --release`
 ./run.sh     # target/release/hydra-umc-physics-replica を実行し、名前 + バージョン + 役割を表示
 ```
 

@@ -6,12 +6,12 @@
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 📐 针对 URDF 运动学链的高保真 MuJoCo/PhysX 仿真
+### 📐 URDF 正向运动学与关节限位验证
 
 <p align="center">
   <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Language-C++%20%2F%20Rust-orange.svg" alt="Tech">
+  <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Stage-Established%20v0-brightgreen.svg" alt="Established v0 stage">
 </p>
 
@@ -19,11 +19,9 @@
 
 ## 1. 🛠️ 技术概述
 
-**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生系统的核心物理仿真模块。它专门
-负责为整个机器人目录进行刚体动力学、关节约束和接触力的底层计算。
+**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：它读取 URDF 串联链，计算每个关节的位姿（正向运动学），并对照关节限位检查关节位置。它不模拟动力学：没有刚体、接触或摩擦模型，也没有 MuJoCo 或 PhysX，这些属于路线图。
 
-通过集成 MuJoCo 或 NVIDIA PhysX 等最先进的求解器，它为逼真的行为提供了
-数学基础，包括重力、负载惯性以及抓取放置任务中的表面摩擦力。
+单位遵循 URDF（米和弧度）。`fk` 输出每个关节的位置；加上 `--json` 则输出位置和单位四元数形式的旋转。
 
 ### 关键特性：
 * 📐 **运动学验证（v0）：** 在一个（已文档说明、部分支持的）URDF 子集上实现真实的正向运动学和真实的关节限位检查——下方"诚实说明"给出了今天到底能跑什么。
@@ -31,6 +29,7 @@
 * 🏗️ **URDF 转物理模型（v0，部分）：** 读取真实的 `<joint>` 元素（类型/原点/轴/限位），并从文档自身真实的根连杆开始，沿着每个关节真实的 `parent`/`child` 连杆名称遍历成一条链，得到真正的从根到叶的顺序，而不管文件中 `<joint>` 元素本身的排列顺序。*尚未真实：* 碰撞网格生成——那仍是这项特性中「物理」的那一半。
 * ⚡ **实时性能（计划中）：** 面向多机器人工作空间的并行化求解——依赖于先有一个真实的物理引擎集成。
 * 🌡️ **热仿真（计划中）：** 用于模拟刀头（T12/激光）散热的实验性支持。
+* 📋 **URDF 读取器能做什么、不能做什么（今天已实现）：** 只读取直接位于 `<robot>` 下的 `<joint>` 元素（`<transmission>` 内的关节会被忽略，因此 ros_control 文件可以解析）；revolute 或 prismatic 关节需要长度非零的 `<axis>` 和 `<limit>`（没有 `<limit>` 时，`fk-checked` 和 `validate-limits` 拒绝检查）；continuous 关节的 `<limit>` 只给出力和速度，fixed 关节没有；重复的关节名、有两个父级的连杆以及没有任何 `<link>` 声明的连杆都是错误；不支持 `<mimic>`、`<safety_controller>` 以及 floating 或 planar 关节；`--joints` 中 URDF 没有的名称或重复给出的名称都是错误，除非给出 `--allow-partial`，否则 `validate-limits` 需要为每个有限位的关节提供位置（未执行的检查绝不会被报告为 "No limit violations"）。
 
 **诚实说明——今天实际运行的内容：** `fk --urdf 路径 --joints "j1=0.5,..."` 通过串联 URDF 关节变换，计算每个关节真实的世界坐标位置，而不管某个位置是否在其声明的限位之内；`fk-checked` 执行同样的计算，但会先针对每个位置调用 `validate-limits` 的真实限位检查，只要有任何一项超出范围就拒绝计算（或报告）任何位姿；`validate-limits --urdf 路径 --joints "..."` 则单独报告真实的超限关节。三者都是纯运动学——没有刚体动力学，没有接触力，尚未接入任何 MuJoCo/PhysX 求解器，并且 URDF 读取器会遍历真实的 `parent`/`child` 连杆树，构建成单一串联链，对真正分叉的树会拒绝（而不是拍平）处理（具体原因见 `urdf.rs` 自身的模块文档）。具体已交付内容请参见 [`CHANGELOG.md`](CHANGELOG.md)，尚待完成的内容请参见下方路线图。
 
@@ -57,7 +56,7 @@ flowchart LR
 
 * **为何本仿真模块没有 `hardware/`/`firmware/`/`os/` 文件夹。** 纯软件——没有自己的板卡，因此这些文件夹被直接省略而非留空。
 * **为何它是 HYDRA-UMC-TWIN 的兄弟项目，而非子模块。** 物理求解器以自己的节拍运行，独立于渲染——将其保持为独立进程意味着一次缓慢的物理步进不会拖慢 HYDRA-UMC-TWIN 自身的帧率，并且两者中的任何一个都可以被替换/升级（例如 MuJoCo 与 PhysX 之间切换）而不影响另一个。
-* **这如何融入生态系统的其余部分。** 为 HYDRA-UMC-TWIN 自身的渲染器提供真实的刚体/接触仿真——这正是"在孪生系统中可行，在实际车间中同样可行"这一理念背后的物理合理性检验。
+* **这如何融入生态系统的其余部分。** 设计上是 HYDRA-UMC-TWIN 的子项目。目前 HYDRA-UMC-TWIN 并不调用它：“在孪生体中能运行，在现场就能运行”背后的物理合理性检查仅为计划，尚未构建。
 * **为何 v0 拒绝真正分叉的 URDF，而不是把它拍平。** 在审计代码时发现——v0 之前按文档的原始顺序解析 `<joint>` 元素，并把这个顺序当作链条本身，这对任何按规范声明关节顺序不按树形排列的 URDF 都是错误的。已修复——现在会从文档自身真实的根连杆开始，沿着每个关节真实的 `parent`/`child` 连杆名称，以真正的从根到叶的顺序遍历。`Chain` 本身仍然是一个扁平的 `Vec<Joint>`，因此真正的分叉（一个连杆有多个子关节）没有单一顺序可以拍平——遇到这种情况会用真实错误拒绝，而不是悄悄保留一个分支、丢弃另一个。这对 `HYDRA-UMC-EDITOR-URDF` 自身的目录是诚实的，因为它今天完全由单一串联臂组成（详见 `urdf.rs`）。
 * **为何 `roxmltree` 是唯一的依赖，还不是完整的物理引擎绑定。** 真实的正向运动学和真实的限位检查所需要的，仅仅是读取 XML 属性和手写的矩阵运算（`transform.rs`）——在真正开始构建刚体/接触仿真之前，为此添加一个 MuJoCo/PhysX 的 FFI 绑定只会增加依赖负担而没有真实收益。
 * **为何 `fk-checked` 是一个新子命令，而不是就地修改 `fk`。** `fk` 是已有的底层纯数学工具——有些调用方（例如调整限位本身）确实想要针对超限值获得未经检查的位姿。`fk-checked` 增加了那个真正的调用方应该使用的、带限位检查、故障安全的入口点，而不会悄悄改变 `fk` 一直以来的含义。
@@ -103,7 +102,7 @@ HYDRA-UMC-PHYSICS-REPLICA/
 
 ```bash
 # Linux / macOS
-./build.sh   # 里程表式版本递增、`cargo test`（50 个测试），然后执行 `cargo build --release`
+./build.sh   # 里程表式版本递增、`cargo test`（64 个测试），然后执行 `cargo build --release`
 ./run.sh     # 运行 target/release/hydra-umc-physics-replica，打印名称 + 版本 + 角色
 ```
 

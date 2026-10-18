@@ -6,12 +6,12 @@
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | 🇩🇪 <b>Deutsch</b> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
-### 📐 High-Fidelity MuJoCo/PhysX-Simulation von URDF-Kinematikketten
+### 📐 URDF-Vorwärtskinematik & Gelenkgrenzen-Validierung
 
 <p align="center">
   <img src="https://img.shields.io/badge/Lizenz-GPL%203.0-blue.svg" alt="GPL 3.0">
-  <img src="https://img.shields.io/badge/Solver-MuJoCo%20%2F%20PhysX-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Sprache-C++%20%2F%20Rust-orange.svg" alt="Tech">
+  <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
+  <img src="https://img.shields.io/badge/Sprache-Rust-orange.svg" alt="Tech">
   <img src="https://img.shields.io/badge/Stufe-Etabliert%20v0-brightgreen.svg" alt="Etablierte v0-Stufe">
 </p>
 
@@ -19,9 +19,9 @@
 
 ## 1. 🛠️ TECHNISCHER ÜBERBLICK
 
-**HYDRA-UMC-PHYSICS-REPLICA** ist das zentrale physikalische Simulationsmodul des Digital Twin. Es ist spezialisiert auf die Low-Level-Berechnung von Starrkörperdynamik, Gelenkbeschränkungen und Kontaktkräften für den gesamten Roboterkatalog.
+**HYDRA-UMC-PHYSICS-REPLICA** ist das Kinematik-Modul des Digitalen Zwillings: Es liest eine serielle URDF-Kette, berechnet die Pose jedes Gelenks (Vorwärtskinematik) und prüft Gelenkpositionen gegen ihre Grenzen. Es simuliert keine Dynamik: Es gibt kein Starrkörper-, Kontakt- oder Reibungsmodell und weder MuJoCo noch PhysX; das ist die Roadmap.
 
-Durch die Integration modernster Solver wie MuJoCo oder NVIDIA PhysX bietet es die mathematische Grundlage für realistisches Verhalten, einschließlich Schwerkraft, Nutzlastträgheit und Oberflächenreibung für Pick-and-Place-Aufgaben.
+Die Einheiten sind die von URDF (Meter und Radiant). `fk` gibt die Position jedes Gelenks aus; mit `--json` gibt es die Position und die Rotation als Einheitsquaternion aus.
 
 ### Hauptmerkmale:
 * 📐 **Kinematische Validierung (v0):** echte Vorwärtskinematik und echte Gelenkgrenzenprüfung über eine (dokumentiert-partielle) URDF-Teilmenge - siehe "Ehrlichkeitscheck" unten für das, was heute genau läuft.
@@ -29,6 +29,7 @@ Durch die Integration modernster Solver wie MuJoCo oder NVIDIA PhysX bietet es d
 * 🏗️ **URDF zu Physik (v0, teilweise):** liest echte `<joint>`-Elemente (Typ/Ursprung/Achse/Grenze) und durchläuft die echten `parent`/`child`-Linknamen jedes Gelenks vom eigenen echten Wurzel-Link des Dokuments aus in eine Kette, in echter Wurzel-zu-Blatt-Reihenfolge, unabhängig von der Reihenfolge der `<joint>`-Elemente in der Datei. *Noch nicht real:* die Erzeugung von Kollisionsnetzen - das bleibt die "physikalische" Hälfte dieses Features.
 * ⚡ **Echtzeit-Performance (geplant):** parallelisierte Berechnung für Multi-Roboter-Arbeitsbereiche - setzt voraus, dass zuerst eine echte Physik-Engine-Integration existiert.
 * 🌡️ **Thermische Simulation (geplant):** experimentelle Unterstützung für die Emulation der Wärmeableitung in Werkzeugköpfen (T12/Laser).
+* 📋 **Was der URDF-Leser tut und nicht tut (heute real):** Es werden nur `<joint>`-Elemente direkt unter `<robot>` gelesen (die Gelenke in `<transmission>` werden ignoriert), sodass ros_control-Dateien lesbar sind; ein revolute- oder prismatic-Gelenk braucht eine `<axis>` mit Länge ungleich null und ein `<limit>` (ohne es verweigern `fk-checked` und `validate-limits` die Prüfung); das `<limit>` eines continuous-Gelenks liefert nur Kraft und Geschwindigkeit, ein fixed-Gelenk hat keines; doppelte Gelenknamen, ein Link mit zwei Eltern und Links, die kein `<link>` deklariert, sind Fehler; `<mimic>`, `<safety_controller>` sowie floating- oder planar-Gelenke werden nicht unterstützt; ein Name in `--joints`, den das URDF nicht hat, oder ein doppelt angegebener ist ein Fehler, und `validate-limits` braucht für jedes begrenzte Gelenk eine Position, außer `--allow-partial` ist gesetzt (eine nicht durchgeführte Prüfung wird nie als "No limit violations" gemeldet).
 
 **Ehrlichkeitscheck - was heute wirklich läuft:** `fk --urdf PFAD --joints "j1=0.5,..."` berechnet echte Weltraum-Positionen pro Gelenk durch Verketten der URDF-Gelenktransformationen, unabhängig davon, ob eine Position innerhalb ihrer deklarierten Grenze liegt; `fk-checked` führt dieselbe Berechnung durch, prüft aber zuerst jede Position gegen die echte Prüfung von `validate-limits` und verweigert die Berechnung (oder Meldung) jeglicher Pose, falls etwas außerhalb des Bereichs liegt; `validate-limits --urdf PFAD --joints "..."` meldet echte Gelenke außerhalb ihres Bereichs eigenständig. Alle drei sind reine Kinematik - keine Starrkörperdynamik, keine Kontaktkräfte, noch kein MuJoCo/PhysX-Solver angebunden, und der URDF-Reader durchläuft einen echten `parent`/`child`-Link-Baum zu einer einzelnen seriellen Kette, wobei ein echt verzweigter Baum abgelehnt (nicht abgeflacht) wird (siehe die eigene Dokumentation des `urdf.rs`-Moduls für das Warum). Siehe [`CHANGELOG.md`](CHANGELOG.md) für genau das, was geliefert wurde, und die Roadmap unten für das, was noch aussteht.
 
@@ -56,7 +57,7 @@ flowchart LR
 
 * **Warum diese Simulation keine `hardware/`/`firmware/`/`os/`-Ordner hat.** Reine Software - keine eigene Platine, daher wurden diese Ordner entfernt statt leer gelassen.
 * **Warum sie Geschwister, kein Submodul, von HYDRA-UMC-TWIN ist.** Der Physik-Solver läuft mit eigener Tick-Rate, unabhängig vom Rendering - ihn als separaten Prozess zu halten bedeutet, dass ein langsamer Physikschritt nicht die eigene Framerate von HYDRA-UMC-TWIN blockiert, und beide können ausgetauscht/aktualisiert werden (z. B. MuJoCo gegen PhysX), ohne den anderen zu berühren.
-* **Wie sich das ins restliche Ökosystem einfügt.** Speist die eigene Rendering-Engine von HYDRA-UMC-TWIN mit echter Starrkörper-/Kontaktsimulation - die Prüfung physikalischer Plausibilität hinter 'wenn es im Zwilling funktioniert, funktioniert es in der Fabrik'.
+* **Wie sich das ins restliche Ökosystem einfügt.** Von Entwurf her ein Kind von HYDRA-UMC-TWIN. Heute ruft HYDRA-UMC-TWIN es nicht auf: Die Prüfung der physikalischen Plausibilität hinter "funktioniert es im Twin, funktioniert es in der Halle" ist geplant, nicht gebaut.
 * **Warum v0 eine echt verzweigte URDF ablehnt, statt sie abzuflachen.** Beim Auditieren des Codes gefunden: v0 parste früher `<joint>`-Elemente in roher Dokumentreihenfolge und behandelte diese Reihenfolge als die Kette - das ist falsch für jede spec-konforme URDF, die ihre Gelenke außerhalb der Baumreihenfolge deklariert. Behoben: die echten `parent`/`child`-Linknamen jedes Gelenks werden jetzt vom echten Wurzel-Link des Dokuments in echter Wurzel-zu-Blatt-Reihenfolge durchlaufen. `Chain` selbst bleibt ein flacher `Vec<Joint>`, sodass ein echter Zweig (ein Link mit mehr als einem Kind-Gelenk) keine einzelne Reihenfolge hat, in die er abgeflacht werden könnte - er wird mit einem echten Fehler abgelehnt, statt still einen Zweig zu behalten und den anderen zu verwerfen. Ehrlich für den eigenen Katalog von `HYDRA-UMC-EDITOR-URDF`, der heute vollständig aus einzelnen seriellen Armen besteht (siehe `urdf.rs`).
 * **Warum `roxmltree` die einzige Abhängigkeit ist, noch kein vollständiges Physik-Engine-Binding.** Echte Vorwärtskinematik und echte Grenzenprüfung brauchen nichts weiter als das Lesen von XML-Attributen und handgeschriebene Matrixalgebra (`transform.rs`) - ein MuJoCo/PhysX-FFI-Binding dafür hinzuzufügen wäre Abhängigkeitsgewicht ohne echten Nutzen, bis tatsächlich eine echte Starrkörper-/Kontaktsimulation gebaut wird.
 * **Warum `fk-checked` ein neuer Subbefehl ist, statt `fk` an Ort und Stelle zu ändern.** `fk` ist das bestehende Low-Level-Dienstprogramm, reine Mathematik - manche Aufrufer (z. B. das Anpassen einer Grenze selbst) wollen tatsächlich die ungeprüfte Pose für einen außerhalb liegenden Wert. `fk-checked` fügt den fehlersicheren, grenzengeprüften Einstiegspunkt hinzu, den echte Aufrufer nutzen sollten, ohne stillschweigend zu ändern, was `fk` schon immer bedeutet hat.
@@ -102,7 +103,7 @@ Erfordert die Rust-Toolchain (`cargo`/`rustc`, Installation via [rustup](https:/
 
 ```bash
 # Linux / macOS
-./build.sh   # Kilometerzähler-Versions-Bump, `cargo test` (50 Tests), dann `cargo build --release`
+./build.sh   # Kilometerzähler-Versions-Bump, `cargo test` (64 Tests), dann `cargo build --release`
 ./run.sh     # führt target/release/hydra-umc-physics-replica aus, gibt Name + Version + Rolle aus
 ```
 

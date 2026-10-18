@@ -20,12 +20,17 @@
 //! `Vec<Joint>` - a genuinely BRANCHING tree (one link with more than one
 //! child joint) has no single root-to-leaf order to flatten it into, and
 //! `parse_urdf` refuses it with a real `UrdfError::Branching` rather than
-//! silently picking one branch and discarding the rest. `HYDRA-UMC-EDITOR-URDF`'s
-//! own catalog is itself entirely single serial arms today, which is
-//! what makes a real, walked serial chain a genuinely useful v0 rather
-//! than a half-measure - full tree/multi-branch support is real,
-//! separate future work once a real branching robot exists to design
-//! its own output shape against.
+//! silently picking one branch and discarding the rest. A model with a
+//! gripper's two fingers, or any other branch, is therefore refused today;
+//! full tree support (a vector of nodes with parent indices and the FK of
+//! every branch) is the next step.
+//!
+//! Units are those of URDF: metres and radians. Only the <joint> elements
+//! that are direct children of <robot> are read (a <transmission> holds
+//! joints of its own that are not part of the tree), `<mimic>` and
+//! `<safety_controller>` are not supported, a continuous or fixed joint's
+//! `<limit>` is ignored for positions (only revolute and prismatic joints
+//! have position limits), and a moving joint needs a non-zero axis.
 
 use crate::transform::{Mat4, Vec3};
 
@@ -118,6 +123,26 @@ pub enum UrdfError {
     UnreachableJoints {
         count: usize,
     },
+    /// Two `<joint>` elements share a name. Positions are given by name, so
+    /// one entry would silently move both.
+    DuplicateJointName {
+        joint: String,
+    },
+    /// Two joints name the same link as their `<child>`: in a URDF every link
+    /// has at most one parent. (Walking such a file from the root would never
+    /// end when the second parent is reachable from the first.)
+    LinkWithTwoParents {
+        link: String,
+    },
+    /// A joint names a link that no `<link>` element declares.
+    UnknownLink {
+        joint: String,
+        link: String,
+    },
+    /// A moving joint whose axis has length 0 has no direction to move along.
+    ZeroAxis {
+        joint: String,
+    },
 }
 
 impl std::fmt::Display for UrdfError {
@@ -158,6 +183,19 @@ impl std::fmt::Display for UrdfError {
                 f,
                 "{count} joint(s) declared in this document are never reached walking the tree from its own real root link"
             ),
+            UrdfError::DuplicateJointName { joint } => {
+                write!(f, "joint name '{joint}' is used by more than one joint")
+            }
+            UrdfError::LinkWithTwoParents { link } => write!(
+                f,
+                "link '{link}' is the child of more than one joint - a URDF link has at most one parent"
+            ),
+            UrdfError::UnknownLink { joint, link } => {
+                write!(f, "joint '{joint}' names link '{link}', which no <link> declares")
+            }
+            UrdfError::ZeroAxis { joint } => {
+                write!(f, "joint '{joint}' moves along an axis of length 0")
+            }
         }
     }
 }
@@ -308,8 +346,18 @@ fn parse_one_joint(node: roxmltree::Node) -> Result<ParsedJoint, UrdfError> {
         None => Vec3::new(1.0, 0.0, 0.0),
     };
 
+    if joint_type != JointType::Fixed && axis.norm() < 1e-9 {
+        return Err(UrdfError::ZeroAxis { joint: name });
+    }
+
+    // Only a revolute or prismatic joint has position limits. A continuous
+    // joint's <limit> carries effort and velocity only (lower and upper
+    // default to 0 and used to lock it at 0 rad), and a fixed joint cannot
+    // move: both are read as having none.
+    let has_position_limits = matches!(joint_type, JointType::Revolute | JointType::Prismatic);
     let limit = node
         .children()
+        .filter(|_| has_position_limits)
         .find(|c| c.has_tag_name("limit"))
         .map(|c| {
             let lower = parse_finite_attribute(c, "lower", &name)?;
@@ -340,11 +388,50 @@ fn parse_one_joint(node: roxmltree::Node) -> Result<ParsedJoint, UrdfError> {
 pub fn parse_urdf(xml: &str) -> Result<Chain, UrdfError> {
     let doc = roxmltree::Document::parse(xml).map_err(|e| UrdfError::Xml(e.to_string()))?;
 
-    let parsed: Vec<ParsedJoint> = doc
-        .descendants()
+    // Only the <joint> elements that are direct children of <robot>: a
+    // <transmission> (ros_control) holds <joint name="..."> elements of its
+    // own, without a type, which are not part of the kinematic tree.
+    let robot = doc.root_element();
+    let parsed: Vec<ParsedJoint> = robot
+        .children()
         .filter(|n| n.has_tag_name("joint"))
         .map(parse_one_joint)
         .collect::<Result<_, _>>()?;
+
+    let mut names = std::collections::HashSet::new();
+    for p in &parsed {
+        if !names.insert(p.joint.name.as_str()) {
+            return Err(UrdfError::DuplicateJointName {
+                joint: p.joint.name.clone(),
+            });
+        }
+    }
+    let mut child_names = std::collections::HashSet::new();
+    for p in &parsed {
+        if !child_names.insert(p.child_link.as_str()) {
+            return Err(UrdfError::LinkWithTwoParents {
+                link: p.child_link.clone(),
+            });
+        }
+    }
+    // When the document declares its links, every link a joint names must be one of them.
+    let declared_links: std::collections::HashSet<&str> = robot
+        .children()
+        .filter(|n| n.has_tag_name("link"))
+        .filter_map(|n| n.attribute("name"))
+        .collect();
+    if !declared_links.is_empty() {
+        for p in &parsed {
+            for link in [p.parent_link.as_str(), p.child_link.as_str()] {
+                if !declared_links.contains(link) {
+                    return Err(UrdfError::UnknownLink {
+                        joint: p.joint.name.clone(),
+                        link: link.to_string(),
+                    });
+                }
+            }
+        }
+    }
 
     if parsed.is_empty() {
         // A real, valid single-link URDF (no joints at all) - an empty
@@ -385,8 +472,14 @@ pub fn parse_urdf(xml: &str) -> Result<Chain, UrdfError> {
 
     let mut ordered: Vec<Joint> = Vec::with_capacity(parsed.len());
     let mut current_link = root;
+    let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
     // A real leaf link (`children_of.get` returns `None`) ends the walk.
     while let Some(here) = children_of.get(current_link) {
+        // each link has one parent (checked above), so the walk can only come
+        // back to a link through a cycle: stop instead of walking for ever
+        if !visited.insert(current_link) {
+            return Err(UrdfError::NoRootLink);
+        }
         match here.as_slice() {
             [] => break,
             [only] => {
@@ -704,5 +797,84 @@ mod tests {
         "#;
         let chain = parse_urdf(xml).expect("an absent xyz must default, not error");
         assert_eq!(chain.joints[0].origin.translation_part(), Vec3::ZERO);
+    }
+
+    fn two_joint_urdf(extra: &str, second_child: &str) -> String {
+        format!(
+            r#"<robot name="t">
+              <link name="base"/><link name="l1"/><link name="l2"/>
+              <joint name="a" type="revolute"><parent link="base"/><child link="l1"/>
+                <axis xyz="0 0 1"/><limit lower="-1" upper="1" effort="1" velocity="1"/></joint>
+              <joint name="b" type="revolute"><parent link="l1"/><child link="{second_child}"/>
+                <axis xyz="0 1 0"/><limit lower="-1" upper="1" effort="1" velocity="1"/></joint>
+              {extra}
+            </robot>"#
+        )
+    }
+
+    #[test]
+    fn joints_inside_a_transmission_are_not_part_of_the_tree() {
+        let xml = two_joint_urdf(
+            r#"<transmission name="t1"><type>transmission_interface/SimpleTransmission</type>
+                 <joint name="a"><hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface></joint>
+               </transmission>"#,
+            "l2",
+        );
+        let chain = parse_urdf(&xml).expect("a standard ros_control URDF must parse");
+        assert_eq!(chain.joints.len(), 2);
+    }
+
+    #[test]
+    fn a_link_with_two_parents_is_refused_instead_of_walking_for_ever() {
+        // base->l1, l1->l2, and a third joint l2->l1: l1 would have two parents
+        let xml = two_joint_urdf(
+            r#"<joint name="c" type="fixed"><parent link="l2"/><child link="l1"/></joint>"#,
+            "l2",
+        );
+        assert_eq!(
+            parse_urdf(&xml).unwrap_err(),
+            UrdfError::LinkWithTwoParents { link: "l1".into() }
+        );
+    }
+
+    #[test]
+    fn two_joints_with_the_same_name_are_refused() {
+        let xml = two_joint_urdf("", "l2").replace("name=\"b\"", "name=\"a\"");
+        assert_eq!(
+            parse_urdf(&xml).unwrap_err(),
+            UrdfError::DuplicateJointName { joint: "a".into() }
+        );
+    }
+
+    #[test]
+    fn a_joint_naming_a_link_nobody_declares_is_refused() {
+        let xml = two_joint_urdf("", "ghost");
+        assert_eq!(
+            parse_urdf(&xml).unwrap_err(),
+            UrdfError::UnknownLink {
+                joint: "b".into(),
+                link: "ghost".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_moving_joint_with_a_zero_axis_is_refused_but_a_fixed_one_may_have_any() {
+        let moving = r#"<robot name="t"><joint name="j" type="revolute"><parent link="a"/><child link="b"/>
+            <axis xyz="0 0 0"/><limit lower="-1" upper="1"/></joint></robot>"#;
+        assert_eq!(
+            parse_urdf(moving).unwrap_err(),
+            UrdfError::ZeroAxis { joint: "j".into() }
+        );
+        let fixed = moving.replace("revolute", "fixed");
+        assert!(parse_urdf(&fixed).is_ok());
+    }
+
+    #[test]
+    fn a_continuous_joint_with_effort_and_velocity_only_is_not_locked_at_zero() {
+        let xml = r#"<robot name="t"><joint name="spin" type="continuous"><parent link="a"/><child link="b"/>
+            <axis xyz="0 0 1"/><limit effort="10" velocity="2"/></joint></robot>"#;
+        let chain = parse_urdf(xml).unwrap();
+        assert_eq!(chain.joints[0].limit, None);
     }
 }
