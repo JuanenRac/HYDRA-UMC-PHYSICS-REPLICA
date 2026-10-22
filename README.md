@@ -98,9 +98,9 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── build_test.py    # Non-versioning build/compile check
 │   └── ci_validate.py   # Manifest/CHANGELOG/docs validation used by CI
 ├── Cargo.toml           # Package metadata, dependencies (roxmltree), odometer version
-├── bump_version.py      # Odometer-style native version bump (used by build.sh/.bat)
+├── bump_version.py      # Odometer-style version bump (run only by the explicit `bump` command)
 ├── bump_manifest_version.py # Syncs hydra-umc.project.json's version to the native one (--sync)
-├── build.sh / build.bat # Bumps version, `cargo test`, then `cargo build --release`
+├── build.sh / build.bat # Validate and build (building never changes the version)
 ├── build-test.sh / build-test.bat # Non-versioning build check (no CHANGELOG/version bump)
 └── run.sh / run.bat     # Runs the compiled release binary (forwards arguments)
 ```
@@ -113,7 +113,7 @@ Requires the Rust toolchain (`cargo`/`rustc`, install via [rustup](https://rustu
 
 ```bash
 # Linux / macOS
-./build.sh   # odometer version bump, `cargo test` (64 tests), then `cargo build --release`
+./build.sh   # `cargo test` (64 tests), then `cargo build --release`
 ./run.sh     # runs target/release/hydra-umc-physics-replica, prints name + version + role
 ```
 
@@ -123,7 +123,7 @@ build.bat
 run.bat
 ```
 
-`build.sh`/`build.bat` bump this project's own `Cargo.toml` version following the ecosystem's "odometer" rule (PATCH+1, carrying into MINOR past 9), run the real test suite, then build a release binary.
+`build.sh`/`build.bat` never change the version (only `python tools/hydra_project_tool.py bump` raises it), run the real test suite, then build a release binary.
 
 The real `fk` and `validate-limits` subcommands need a URDF file:
 

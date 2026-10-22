@@ -99,9 +99,9 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── build_test.py    # Vérification de build sans versionnage
 │   └── ci_validate.py   # Validation manifeste/CHANGELOG/docs utilisée par CI
 ├── Cargo.toml           # Métadonnées du paquet, dépendances (roxmltree), version compteur kilométrique
-├── bump_version.py      # Incrément de version native type compteur kilométrique (utilisé par build.sh/.bat)
+├── bump_version.py      # Incrément de version type compteur kilométrique (exécuté seulement par la commande `bump` explicite)
 ├── bump_manifest_version.py # Synchronise la version de hydra-umc.project.json avec la version native (--sync)
-├── build.sh / build.bat # Incrémente la version, `cargo test`, puis `cargo build --release`
+├── build.sh / build.bat # Valide et compile (compiler ne change jamais la version)
 ├── build-test.sh / build-test.bat # Vérification de build sans versionnage
 └── run.sh / run.bat     # Exécute le binaire release compilé (relaie les arguments)
 ```
@@ -114,7 +114,7 @@ Nécessite la chaîne d'outils Rust (`cargo`/`rustc`, à installer via [rustup](
 
 ```bash
 # Linux / macOS
-./build.sh   # incrément de version compteur kilométrique, `cargo test` (64 tests), puis `cargo build --release`
+./build.sh   # `cargo test` (64 tests), puis `cargo build --release`
 ./run.sh     # exécute target/release/hydra-umc-physics-replica, affiche nom + version + rôle
 ```
 
@@ -124,7 +124,7 @@ build.bat
 run.bat
 ```
 
-`build.sh`/`build.bat` incrémentent la version du propre `Cargo.toml` de ce projet selon la règle "compteur kilométrique" de l'écosystème (PATCH+1, avec retenue vers MINOR au-delà de 9), exécutent la vraie suite de tests, puis construisent un binaire release.
+`build.sh`/`build.bat` ne changent jamais la version (seule `python tools/hydra_project_tool.py bump` la fait monter), exécutent la vraie suite de tests, puis construisent un binaire release.
 
 Les vraies sous-commandes `fk` et `validate-limits` ont besoin d'un fichier URDF :
 
