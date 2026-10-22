@@ -107,7 +107,6 @@ All notable changes to this project are documented here.
 - Real verification beyond the test suite: ran the compiled binary against a real 2-joint URDF fixture - `fk-checked` computed a real pose for an in-range configuration, refused (exit 1) an out-of-range one with the exact violation reported, while plain `fk` still computed the same out-of-range pose unchanged.
 
 ## [0.0.2] - Real v0 forward kinematics and joint-limit validation
-### Added
 - `transform.rs` - real, dependency-free `Vec3`/`Mat4`: translation, axis-angle rotation (Rodrigues' formula), URDF `rpy` composition, matrix product, point transform.
 - `urdf.rs` - a real, deliberately partial URDF reader (via the `roxmltree` crate, this project's only dependency): parses `<joint>` elements (`type`/`origin`/`axis`/`limit`) in document order as a single serial chain. Honest, documented limitation: does not walk `parent`/`child` link names, so a branching URDF tree is out of scope for v0.
 - `kinematics.rs` - `forward_kinematics()`: real per-joint world-frame transforms for revolute/continuous/prismatic/fixed joints, given a joint-position map.
@@ -116,7 +115,6 @@ All notable changes to this project are documented here.
 - 24 new real tests across all four new modules, covering transform math, URDF parsing (including every documented error case), kinematic chaining, and limit validation at and around the boundary.
 - Real verification beyond the test suite: ran `fk` and `validate-limits` against a real 2-joint test URDF, confirming correct chained world-frame positions and a correctly detected out-of-range joint.
 
-### Fixed
 - `build.sh` called `bump_manifest_version.py` (no `--sync`) as its very first line, before also calling `bump_version.py` later - the same double-bump pattern found in other projects this session. Rewritten to bump the native version first, then sync the manifest.
 - `build.sh`/`build.bat` now run `cargo test` before `cargo build --release`, and use the ecosystem's no-autoclose pattern (trap in `.sh`, `pause` in `.bat`) for the first time in this project. `run.sh`/`run.bat` now forward arguments.
 
