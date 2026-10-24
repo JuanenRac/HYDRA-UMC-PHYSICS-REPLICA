@@ -28,6 +28,19 @@
 | Technologie | Rust / roxmltree / URDF forward kinematics |
 | Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
 
+## 🚦 État du projet
+
+Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'hui. Elle est écrite d'après ce que le dépôt peut montrer (tests, compilations, exécutions), pas d'après ce qui est prévu.
+
+🟢 Fait et vérifié · 🟡 Fonctionne, avec des limites connues · 🟠 À moitié fait ou pas encore vérifié · 🔴 Pas fait ou ne fonctionne pas
+
+| Domaine | État | Ce que cela veut dire ici |
+|---|---|---|
+| Logiciel | 🟡 | Fonctionne pour son usage principal ; la vérification d'honnêteté ci-dessus liste ce qui manque encore |
+| Tests | 🟠 | Aucun nombre de tests n'est encore consigné pour ce dépôt |
+| Matériel réel | 🔴 | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
+| Documentation | 🟢 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
+
 ## 1. 🛠️ APERÇU TECHNIQUE
 
 **HYDRA-UMC-PHYSICS-REPLICA** est le module de cinématique du Jumeau Numérique : il lit un arbre cinématique URDF (bras série et arbres ramifiés comme une pince), calcule la pose de chaque articulation (cinématique directe) et vérifie les positions articulaires par rapport à leurs limites. Il ne simule pas la dynamique : il n'y a ni modèle de corps rigide, de contact ou de frottement, ni MuJoCo ni PhysX ; c'est la feuille de route.

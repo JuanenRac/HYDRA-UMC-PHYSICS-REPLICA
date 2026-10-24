@@ -28,6 +28,19 @@
 | Technik | Rust / roxmltree / URDF forward kinematics |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 
+## 🚦 Projektstatus
+
+Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heute ist. Sie beruht auf dem, was das Repository zeigen kann (Tests, Builds, Läufe), nicht auf dem, was geplant ist.
+
+🟢 Fertig und überprüft · 🟡 Funktioniert, mit bekannten Grenzen · 🟠 Teilweise fertig oder noch nicht überprüft · 🔴 Nicht gemacht oder funktioniert nicht
+
+| Bereich | Stand | Was das hier bedeutet |
+|---|---|---|
+| Software | 🟡 | Funktioniert für seinen Hauptzweck; die Ehrlichkeitsprüfung oben nennt, was noch fehlt |
+| Tests | 🟠 | Für dieses Repository ist noch keine Testanzahl vermerkt |
+| Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+| Dokumentation | 🟢 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
+
 ## 1. 🛠️ TECHNISCHER ÜBERBLICK
 
 **HYDRA-UMC-PHYSICS-REPLICA** ist das Kinematik-Modul des Digitalen Zwillings: Es liest einen kinematischen URDF-Baum (serielle Arme und verzweigte wie einen Greifer), berechnet die Pose jedes Gelenks (Vorwärtskinematik) und prüft Gelenkpositionen gegen ihre Grenzen. Es simuliert keine Dynamik: Es gibt kein Starrkörper-, Kontakt- oder Reibungsmodell und weder MuJoCo noch PhysX; das ist die Roadmap.
