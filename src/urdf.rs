@@ -16,21 +16,20 @@
 //! joint's own child) to produce `Chain.joints` in genuine root-to-leaf
 //! order, regardless of how the source file happens to list them.
 //!
-//! Still an honest, deliberate v0 boundary: `Chain` itself remains a flat
-//! `Vec<Joint>` - a genuinely BRANCHING tree (one link with more than one
-//! child joint) has no single root-to-leaf order to flatten it into, and
-//! `parse_urdf` refuses it with a real `UrdfError::Branching` rather than
-//! silently picking one branch and discarding the rest. A model with a
-//! gripper's two fingers, or any other branch, is therefore refused today;
-//! full tree support (a vector of nodes with parent indices and the FK of
-//! every branch) is the next step.
+//! A genuinely BRANCHING tree (a gripper's two fingers, a dual-arm robot
+//! on one torso) is read by `parse_urdf_model`, which returns a `Model`:
+//! the joints in parent-before-child order, the index of each joint's
+//! parent joint, and the extras a joint can carry (`<mimic>`, the effort
+//! and velocity of `<limit>`, the soft limits of `<safety_controller>`).
+//! `parse_urdf` keeps its original contract, a flat serial `Chain`, and
+//! refuses a branch with `UrdfError::Branching` rather than silently
+//! keeping one branch and dropping the other.
 //!
 //! Units are those of URDF: metres and radians. Only the <joint> elements
 //! that are direct children of <robot> are read (a <transmission> holds
-//! joints of its own that are not part of the tree), `<mimic>` and
-//! `<safety_controller>` are not supported, a continuous or fixed joint's
-//! `<limit>` is ignored for positions (only revolute and prismatic joints
-//! have position limits), and a moving joint needs a non-zero axis.
+//! joints of its own that are not part of the tree), a continuous or fixed
+//! joint's `<limit>` is ignored for positions (only revolute and prismatic
+//! joints have position limits), and a moving joint needs a non-zero axis.
 
 use crate::transform::{Mat4, Vec3};
 
@@ -54,6 +53,63 @@ pub struct Joint {
 #[derive(Debug, Clone)]
 pub struct Chain {
     pub joints: Vec<Joint>,
+}
+
+/// `<mimic joint="master" multiplier="m" offset="o"/>`: the joint has no position of its own, it is `m * master + o`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mimic {
+    pub joint: String,
+    pub multiplier: f64,
+    pub offset: f64,
+}
+
+/// `<safety_controller soft_lower_limit soft_upper_limit k_position k_velocity>`: the range a controller keeps
+/// inside the hard `<limit>` of the joint.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SoftLimits {
+    pub lower: f64,
+    pub upper: f64,
+    pub k_position: f64,
+    pub k_velocity: f64,
+}
+
+/// What a joint carries beyond its motion: kept next to `Joint`, not in it, so that every place that builds a `Joint` by hand is untouched.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct JointExtras {
+    pub mimic: Option<Mimic>,
+    /// `<limit velocity>`: the most this joint may move per second (rad/s or m/s). A continuous joint has one too.
+    pub velocity_limit: Option<f64>,
+    /// `<limit effort>`: the most force or torque it may be asked for (N or N*m).
+    pub effort_limit: Option<f64>,
+    pub soft: Option<SoftLimits>,
+}
+
+/// The whole tree of a URDF.
+#[derive(Debug, Clone)]
+pub struct Model {
+    /// The joints, every joint after the one that carries its parent link.
+    pub chain: Chain,
+    #[allow(dead_code)]
+    pub root_link: String,
+    /// For each joint, the index of the joint whose child link is its parent link (`None`: it hangs from the root link).
+    pub parents: Vec<Option<usize>>,
+    /// Index-aligned with `chain.joints`.
+    pub extras: Vec<JointExtras>,
+}
+
+#[allow(dead_code)]
+impl Model {
+    /// True when every joint hangs from the previous one: the shape `Chain` alone can describe.
+    pub fn is_serial(&self) -> bool {
+        self.parents
+            .iter()
+            .enumerate()
+            .all(|(i, parent)| *parent == if i == 0 { None } else { Some(i - 1) })
+    }
+
+    pub fn joint_index(&self, name: &str) -> Option<usize> {
+        self.chain.joints.iter().position(|j| j.name == name)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -109,6 +165,7 @@ pub enum UrdfError {
     /// `Vec<Joint>` with no way to represent two children faithfully, so
     /// this is refused rather than silently keeping one branch and
     /// dropping the other.
+    #[allow(dead_code)]
     Branching {
         link: String,
         joint_count: usize,
@@ -142,6 +199,16 @@ pub enum UrdfError {
     /// A moving joint whose axis has length 0 has no direction to move along.
     ZeroAxis {
         joint: String,
+    },
+    /// A `<mimic>` that cannot work: it names no joint, a joint that does not exist, itself, a fixed joint, or it is part of a cycle of followers.
+    InvalidMimic {
+        joint: String,
+        reason: String,
+    },
+    /// A `<safety_controller>` whose soft limits are inverted or lie outside the hard `<limit>` they are meant to sit inside.
+    InvalidSoftLimits {
+        joint: String,
+        reason: String,
     },
 }
 
@@ -195,6 +262,12 @@ impl std::fmt::Display for UrdfError {
             }
             UrdfError::ZeroAxis { joint } => {
                 write!(f, "joint '{joint}' moves along an axis of length 0")
+            }
+            UrdfError::InvalidMimic { joint, reason } => {
+                write!(f, "joint '{joint}' has an invalid <mimic>: {reason}")
+            }
+            UrdfError::InvalidSoftLimits { joint, reason } => {
+                write!(f, "joint '{joint}' has invalid soft limits: {reason}")
             }
         }
     }
@@ -279,6 +352,7 @@ struct ParsedJoint {
     joint: Joint,
     parent_link: String,
     child_link: String,
+    extras: JointExtras,
 }
 
 fn parse_one_joint(node: roxmltree::Node) -> Result<ParsedJoint, UrdfError> {
@@ -372,6 +446,71 @@ fn parse_one_joint(node: roxmltree::Node) -> Result<ParsedJoint, UrdfError> {
         })
         .transpose()?;
 
+    // effort and velocity live in <limit> for every joint type (a continuous joint has no position limit but has these)
+    let mut extras = JointExtras::default();
+    if let Some(c) = node.children().find(|c| c.has_tag_name("limit")) {
+        extras.effort_limit = parse_optional_non_negative(c, "effort", &name)?;
+        extras.velocity_limit = parse_optional_non_negative(c, "velocity", &name)?;
+    }
+
+    if let Some(c) = node.children().find(|c| c.has_tag_name("mimic")) {
+        if joint_type == JointType::Fixed {
+            return Err(UrdfError::InvalidMimic {
+                joint: name,
+                reason: "a fixed joint cannot follow another".to_string(),
+            });
+        }
+        let master = c
+            .attribute("joint")
+            .filter(|m| !m.is_empty())
+            .ok_or_else(|| UrdfError::InvalidMimic {
+                joint: name.clone(),
+                reason: "it names no joint to follow".to_string(),
+            })?;
+        let multiplier = parse_optional_number(c, "multiplier", &name, 1.0)?;
+        let offset = parse_optional_number(c, "offset", &name, 0.0)?;
+        extras.mimic = Some(Mimic {
+            joint: master.to_string(),
+            multiplier,
+            offset,
+        });
+    }
+
+    if let Some(c) = node
+        .children()
+        .find(|c| c.has_tag_name("safety_controller"))
+    {
+        let soft = SoftLimits {
+            lower: parse_optional_number(c, "soft_lower_limit", &name, 0.0)?,
+            upper: parse_optional_number(c, "soft_upper_limit", &name, 0.0)?,
+            k_position: parse_optional_number(c, "k_position", &name, 0.0)?,
+            k_velocity: parse_optional_number(c, "k_velocity", &name, 0.0)?,
+        };
+        if soft.lower > soft.upper {
+            return Err(UrdfError::InvalidSoftLimits {
+                joint: name,
+                reason: format!(
+                    "soft_lower_limit {} is above soft_upper_limit {}",
+                    soft.lower, soft.upper
+                ),
+            });
+        }
+        if let Some((lower, upper)) = limit {
+            if soft.lower < lower - 1e-9 || soft.upper > upper + 1e-9 {
+                return Err(UrdfError::InvalidSoftLimits {
+                    joint: name,
+                    reason: format!(
+                        "the soft range [{}, {}] is not inside the hard limit [{lower}, {upper}]",
+                        soft.lower, soft.upper
+                    ),
+                });
+            }
+        }
+        if has_position_limits {
+            extras.soft = Some(soft);
+        }
+    }
+
     Ok(ParsedJoint {
         joint: Joint {
             name,
@@ -382,10 +521,44 @@ fn parse_one_joint(node: roxmltree::Node) -> Result<ParsedJoint, UrdfError> {
         },
         parent_link,
         child_link,
+        extras,
     })
 }
 
-pub fn parse_urdf(xml: &str) -> Result<Chain, UrdfError> {
+/// A numeric attribute that may be absent (`default`), but when present must be a finite number.
+fn parse_optional_number(
+    node: roxmltree::Node,
+    attribute: &str,
+    joint: &str,
+    default: f64,
+) -> Result<f64, UrdfError> {
+    match node.attribute(attribute) {
+        None => Ok(default),
+        Some(_) => parse_finite_attribute(node, attribute, joint),
+    }
+}
+
+/// Like `parse_optional_number` with no default, and a negative value is refused: a speed or effort limit is a magnitude.
+fn parse_optional_non_negative(
+    node: roxmltree::Node,
+    attribute: &str,
+    joint: &str,
+) -> Result<Option<f64>, UrdfError> {
+    if node.attribute(attribute).is_none() {
+        return Ok(None);
+    }
+    let value = parse_finite_attribute(node, attribute, joint)?;
+    if value < 0.0 {
+        return Err(UrdfError::InvalidNumber {
+            joint: joint.to_string(),
+            text: format!("{attribute}=\"{value}\" (a limit is not negative)"),
+        });
+    }
+    Ok(Some(value))
+}
+
+/// Reads the whole tree of a URDF: every branch, the mimic joints, and the effort, velocity and soft limits.
+pub fn parse_urdf_model(xml: &str) -> Result<Model, UrdfError> {
     let doc = roxmltree::Document::parse(xml).map_err(|e| UrdfError::Xml(e.to_string()))?;
 
     // Only the <joint> elements that are direct children of <robot>: a
@@ -436,7 +609,17 @@ pub fn parse_urdf(xml: &str) -> Result<Chain, UrdfError> {
     if parsed.is_empty() {
         // A real, valid single-link URDF (no joints at all) - an empty
         // chain, not an error.
-        return Ok(Chain { joints: Vec::new() });
+        return Ok(Model {
+            chain: Chain { joints: Vec::new() },
+            root_link: robot
+                .children()
+                .find(|n| n.has_tag_name("link"))
+                .and_then(|n| n.attribute("name"))
+                .unwrap_or("")
+                .to_string(),
+            parents: Vec::new(),
+            extras: Vec::new(),
+        });
     }
 
     // The real tree this document actually describes: every link that is
@@ -470,39 +653,135 @@ pub fn parse_urdf(xml: &str) -> Result<Chain, UrdfError> {
         }
     };
 
-    let mut ordered: Vec<Joint> = Vec::with_capacity(parsed.len());
-    let mut current_link = root;
-    let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
-    // A real leaf link (`children_of.get` returns `None`) ends the walk.
-    while let Some(here) = children_of.get(current_link) {
-        // each link has one parent (checked above), so the walk can only come
-        // back to a link through a cycle: stop instead of walking for ever
-        if !visited.insert(current_link) {
+    // Depth-first from the root, children in the order the document lists them: every joint comes after the joint that carries its parent link.
+    let mut order: Vec<usize> = Vec::with_capacity(parsed.len());
+    let mut parent_of_joint: std::collections::HashMap<usize, Option<usize>> =
+        std::collections::HashMap::new();
+    let mut stack: Vec<(usize, Option<usize>)> = children_of
+        .get(root)
+        .map(|v| v.iter().rev().map(|&i| (i, None)).collect())
+        .unwrap_or_default();
+    while let Some((index, parent)) = stack.pop() {
+        // each link has one parent (checked above), so a joint can only be met twice through a cycle
+        if parent_of_joint.insert(index, parent).is_some() {
             return Err(UrdfError::NoRootLink);
         }
-        match here.as_slice() {
-            [] => break,
-            [only] => {
-                let p = &parsed[*only];
-                ordered.push(p.joint.clone());
-                current_link = p.child_link.as_str();
-            }
-            many => {
-                return Err(UrdfError::Branching {
-                    link: current_link.to_string(),
-                    joint_count: many.len(),
-                })
+        order.push(index);
+        if let Some(children) = children_of.get(parsed[index].child_link.as_str()) {
+            for &child in children.iter().rev() {
+                stack.push((child, Some(index)));
             }
         }
     }
 
-    if ordered.len() != parsed.len() {
+    if order.len() != parsed.len() {
         return Err(UrdfError::UnreachableJoints {
-            count: parsed.len() - ordered.len(),
+            count: parsed.len() - order.len(),
         });
     }
 
-    Ok(Chain { joints: ordered })
+    let position_in_order: std::collections::HashMap<usize, usize> =
+        order.iter().enumerate().map(|(pos, &i)| (i, pos)).collect();
+    let parents: Vec<Option<usize>> = order
+        .iter()
+        .map(|i| parent_of_joint[i].map(|p| position_in_order[&p]))
+        .collect();
+    let mut joints = Vec::with_capacity(order.len());
+    let mut extras = Vec::with_capacity(order.len());
+    for &i in &order {
+        joints.push(parsed[i].joint.clone());
+        extras.push(parsed[i].extras.clone());
+    }
+    validate_mimics(&joints, &extras)?;
+
+    Ok(Model {
+        chain: Chain { joints },
+        root_link: root.to_string(),
+        parents,
+        extras,
+    })
+}
+
+/// A mimic must follow a joint that exists, is not itself, can move, and the followers must not follow each other in a circle.
+fn validate_mimics(joints: &[Joint], extras: &[JointExtras]) -> Result<(), UrdfError> {
+    let index_of = |name: &str| joints.iter().position(|j| j.name == name);
+    for (i, extra) in extras.iter().enumerate() {
+        let Some(mimic) = &extra.mimic else {
+            continue;
+        };
+        let fail = |reason: String| UrdfError::InvalidMimic {
+            joint: joints[i].name.clone(),
+            reason,
+        };
+        let Some(master) = index_of(&mimic.joint) else {
+            return Err(fail(format!("there is no joint named '{}'", mimic.joint)));
+        };
+        if master == i {
+            return Err(fail("a joint cannot follow itself".to_string()));
+        }
+        if joints[master].joint_type == JointType::Fixed {
+            return Err(fail(format!(
+                "'{}' is a fixed joint: it has no position to follow",
+                mimic.joint
+            )));
+        }
+        let mut seen = vec![i];
+        let mut here = master;
+        while let Some(next) = &extras[here].mimic {
+            let Some(next_index) = index_of(&next.joint) else {
+                return Err(fail(format!(
+                    "'{}' follows '{}', which does not exist",
+                    joints[here].name, next.joint
+                )));
+            };
+            if seen.contains(&next_index) || seen.contains(&here) {
+                return Err(fail(
+                    "the followers follow each other in a circle".to_string(),
+                ));
+            }
+            seen.push(here);
+            here = next_index;
+        }
+    }
+    Ok(())
+}
+
+/// The serial chain of a URDF, in root-to-leaf order. A branching tree is refused (`parse_urdf_model` reads those).
+#[allow(dead_code)]
+pub fn parse_urdf(xml: &str) -> Result<Chain, UrdfError> {
+    let model = parse_urdf_model(xml)?;
+    let mut children_count: std::collections::HashMap<Option<usize>, usize> =
+        std::collections::HashMap::new();
+    for parent in &model.parents {
+        *children_count.entry(*parent).or_default() += 1;
+    }
+    if let Some((parent, count)) = children_count.iter().find(|(_, &c)| c > 1) {
+        // name the link they hang from, as the error always did
+        let first_child = model.parents.iter().position(|p| p == parent).unwrap_or(0);
+        return Err(UrdfError::Branching {
+            link: first_parent_link(xml, &model.chain.joints[first_child].name),
+            joint_count: *count,
+        });
+    }
+    Ok(model.chain)
+}
+
+/// The `<parent link>` of a named joint, for the message of `UrdfError::Branching`.
+fn first_parent_link(xml: &str, joint: &str) -> String {
+    roxmltree::Document::parse(xml)
+        .ok()
+        .and_then(|doc| {
+            doc.root_element()
+                .children()
+                .filter(|n| n.has_tag_name("joint") && n.attribute("name") == Some(joint))
+                .find_map(|n| {
+                    n.children()
+                        .find(|c| c.has_tag_name("parent"))
+                        .and_then(|c| c.attribute("link"))
+                        .map(str::to_string)
+                })
+        })
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -876,5 +1155,186 @@ mod tests {
             <axis xyz="0 0 1"/><limit effort="10" velocity="2"/></joint></robot>"#;
         let chain = parse_urdf(xml).unwrap();
         assert_eq!(chain.joints[0].limit, None);
+    }
+
+    // ---- the tree, the followers and the limits beyond the position
+
+    const GRIPPER: &str = r#"<robot name="g"><link name="base"/><link name="palm"/><link name="l"/><link name="r"/>
+        <joint name="finger_right" type="prismatic"><parent link="palm"/><child link="r"/><axis xyz="1 0 0"/>
+          <limit lower="-1" upper="0" effort="5" velocity="0.5"/><mimic joint="finger_left" multiplier="-1" offset="0.1"/></joint>
+        <joint name="finger_left" type="prismatic"><parent link="palm"/><child link="l"/><axis xyz="1 0 0"/>
+          <limit lower="0" upper="1" effort="5" velocity="0.5"/></joint>
+        <joint name="wrist" type="revolute"><parent link="base"/><child link="palm"/><axis xyz="0 0 1"/>
+          <limit lower="-1" upper="1" effort="9" velocity="2"/>
+          <safety_controller soft_lower_limit="-0.8" soft_upper_limit="0.8" k_position="5" k_velocity="1"/></joint>
+      </robot>"#;
+
+    #[test]
+    fn a_branching_tree_is_read_with_every_joint_after_the_joint_that_carries_it() {
+        let model = parse_urdf_model(GRIPPER).unwrap();
+        let names: Vec<&str> = model.chain.joints.iter().map(|j| j.name.as_str()).collect();
+        assert_eq!(names, vec!["wrist", "finger_right", "finger_left"]);
+        assert_eq!(model.parents, vec![None, Some(0), Some(0)]);
+        assert_eq!(model.root_link, "base");
+        assert!(!model.is_serial());
+        assert_eq!(model.joint_index("finger_left"), Some(2));
+        // the serial reader still refuses it, naming the link that branches
+        assert_eq!(
+            parse_urdf(GRIPPER).unwrap_err(),
+            UrdfError::Branching {
+                link: "palm".into(),
+                joint_count: 2
+            }
+        );
+    }
+
+    #[test]
+    fn a_serial_chain_is_serial_as_a_model_too() {
+        let model = parse_urdf_model(&two_joint_urdf("", "l2")).unwrap();
+        assert!(model.is_serial());
+    }
+
+    #[test]
+    fn mimic_effort_velocity_and_soft_limits_are_read() {
+        let model = parse_urdf_model(GRIPPER).unwrap();
+        let follower = &model.extras[1];
+        assert_eq!(
+            follower.mimic,
+            Some(Mimic {
+                joint: "finger_left".into(),
+                multiplier: -1.0,
+                offset: 0.1
+            })
+        );
+        assert_eq!(follower.velocity_limit, Some(0.5));
+        assert_eq!(follower.effort_limit, Some(5.0));
+        assert_eq!(
+            model.extras[0].soft,
+            Some(SoftLimits {
+                lower: -0.8,
+                upper: 0.8,
+                k_position: 5.0,
+                k_velocity: 1.0
+            })
+        );
+        assert_eq!(model.extras[2].mimic, None);
+    }
+
+    #[test]
+    fn a_continuous_joint_keeps_its_velocity_and_effort() {
+        let xml = r#"<robot name="t"><joint name="spin" type="continuous"><parent link="a"/><child link="b"/>
+            <axis xyz="0 0 1"/><limit effort="10" velocity="2"/></joint></robot>"#;
+        let model = parse_urdf_model(xml).unwrap();
+        assert_eq!(model.extras[0].velocity_limit, Some(2.0));
+        assert_eq!(model.extras[0].effort_limit, Some(10.0));
+        assert_eq!(model.chain.joints[0].limit, None);
+    }
+
+    fn with_extra(inside_second_joint: &str) -> String {
+        format!(
+            r#"<robot name="t"><joint name="a" type="revolute"><parent link="x"/><child link="y"/><axis xyz="0 0 1"/>
+                <limit lower="-1" upper="1" effort="1" velocity="1"/></joint>
+               <joint name="b" type="revolute"><parent link="y"/><child link="z"/><axis xyz="0 0 1"/>
+                <limit lower="-1" upper="1" effort="1" velocity="1"/>{inside_second_joint}</joint></robot>"#
+        )
+    }
+
+    #[test]
+    fn a_mimic_that_cannot_work_is_refused() {
+        for (inside, reason_part) in [
+            (r#"<mimic joint="ghost"/>"#, "no joint named"),
+            (r#"<mimic joint="b"/>"#, "itself"),
+            (r#"<mimic/>"#, "no joint"),
+        ] {
+            match parse_urdf_model(&with_extra(inside)).unwrap_err() {
+                UrdfError::InvalidMimic { joint, reason } => {
+                    assert_eq!(joint, "b");
+                    assert!(reason.contains(reason_part), "{reason}");
+                }
+                other => panic!("{other:?}"),
+            }
+        }
+        assert!(matches!(
+            parse_urdf_model(&with_extra(r#"<mimic joint="a" multiplier="nan"/>"#)),
+            Err(UrdfError::NonFiniteNumber { .. })
+        ));
+    }
+
+    #[test]
+    fn a_fixed_joint_cannot_follow_and_cannot_be_followed() {
+        let xml = r#"<robot name="t"><joint name="a" type="fixed"><parent link="x"/><child link="y"/></joint>
+            <joint name="b" type="revolute"><parent link="y"/><child link="z"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/>
+              <mimic joint="a"/></joint></robot>"#;
+        assert!(matches!(
+            parse_urdf_model(xml),
+            Err(UrdfError::InvalidMimic { .. })
+        ));
+        let follower_fixed = xml.replace(
+            r#"<joint name="a" type="fixed">"#,
+            r#"<joint name="a" type="fixed"><mimic joint="b"/>"#,
+        );
+        assert!(matches!(
+            parse_urdf_model(&follower_fixed),
+            Err(UrdfError::InvalidMimic { .. })
+        ));
+    }
+
+    #[test]
+    fn followers_that_follow_each_other_in_a_circle_are_refused() {
+        let xml = r#"<robot name="t">
+            <joint name="a" type="revolute"><parent link="x"/><child link="y"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/><mimic joint="b"/></joint>
+            <joint name="b" type="revolute"><parent link="y"/><child link="z"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/><mimic joint="c"/></joint>
+            <joint name="c" type="revolute"><parent link="z"/><child link="w"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/><mimic joint="a"/></joint>
+          </robot>"#;
+        match parse_urdf_model(xml).unwrap_err() {
+            UrdfError::InvalidMimic { reason, .. } => {
+                assert!(reason.contains("circle"), "{reason}")
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_follower_of_a_follower_is_fine() {
+        let xml = r#"<robot name="t">
+            <joint name="a" type="revolute"><parent link="x"/><child link="y"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/></joint>
+            <joint name="b" type="revolute"><parent link="y"/><child link="z"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/><mimic joint="a" multiplier="2"/></joint>
+            <joint name="c" type="revolute"><parent link="z"/><child link="w"/><axis xyz="0 0 1"/><limit lower="-1" upper="1"/><mimic joint="b" offset="1"/></joint>
+          </robot>"#;
+        assert!(parse_urdf_model(xml).is_ok());
+    }
+
+    #[test]
+    fn soft_limits_must_be_ordered_and_inside_the_hard_limit() {
+        let inverted =
+            with_extra(r#"<safety_controller soft_lower_limit="0.5" soft_upper_limit="-0.5"/>"#);
+        assert!(matches!(
+            parse_urdf_model(&inverted),
+            Err(UrdfError::InvalidSoftLimits { .. })
+        ));
+        let outside =
+            with_extra(r#"<safety_controller soft_lower_limit="-2" soft_upper_limit="0.5"/>"#);
+        assert!(matches!(
+            parse_urdf_model(&outside),
+            Err(UrdfError::InvalidSoftLimits { .. })
+        ));
+        let fine = with_extra(r#"<safety_controller soft_lower_limit="-1" soft_upper_limit="1"/>"#);
+        assert!(parse_urdf_model(&fine).is_ok());
+    }
+
+    #[test]
+    fn a_negative_or_unreadable_speed_or_effort_limit_is_refused() {
+        for bad in [
+            r#"effort="-1""#,
+            r#"velocity="-0.1""#,
+            r#"velocity="fast""#,
+            r#"effort="inf""#,
+        ] {
+            let xml = format!(
+                r#"<robot name="t"><joint name="a" type="revolute"><parent link="x"/><child link="y"/><axis xyz="0 0 1"/>
+                    <limit lower="-1" upper="1" {bad}/></joint></robot>"#
+            );
+            assert!(parse_urdf_model(&xml).is_err(), "{bad}");
+        }
     }
 }

@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A branching URDF is read whole.** `parse_urdf_model` returns a `Model`: the joints in parent-before-child order, the index of each joint's parent joint and the extras of every joint; forward kinematics places each joint from the joint that carries its parent link, so the two fingers of a gripper are both placed from the palm. `parse_urdf` keeps its flat serial `Chain` and still refuses a branch with a real error. `fk`, `fk-checked` and `validate-limits` read trees.
+- **`<mimic>`** (`multiplier * master + offset`, followers of followers included): a follower has no position of its own, a position given for one is refused, and its limits are checked with the position its master gives it; a mimic that names no joint, itself, a fixed joint or a circle of followers is refused when the file is read.
+- **Effort, velocity and soft limits.** The `effort` and `velocity` of `<limit>` (continuous joints included) and the soft range of `<safety_controller>` (ordered and inside the hard limit) are read; `validate-limits --soft --velocities ... --efforts ...` checks them, by magnitude, and a joint without such a limit is an error, not a pass.
 - Building no longer changes the version; raising it is the explicit `bump` command (`python tools/hydra_project_tool.py bump`). The build scripts only report the version they built, and CI fails if a build script runs a bump.
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - **The licence declared in the package metadata is GPL-3.0-or-later,** like the headers of the code and the rest of the ecosystem (it said GPL-3.0-only).

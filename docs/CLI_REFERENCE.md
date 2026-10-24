@@ -4,10 +4,11 @@
 runs real forward-kinematics and joint-limit validation over a (documented,
 deliberately partial) URDF subset — see `src/urdf.rs`'s own module docs for
 what's parsed today (every joint's real `<parent>`/`<child>` link names are
-walked from the document's own real root into a single serial chain, in
-genuine root-to-leaf order regardless of `<joint>` element order in the
-file; a real branching tree — one link with more than one child joint — is
-refused rather than flattened). Every example below was captured from a
+walked from the document's own real root, every joint after the joint that
+carries its parent link, regardless of `<joint>` element order in the file;
+a branching tree — one link with more than one child joint, like the two
+fingers of a gripper — is read whole, each branch placed from the joint
+that carries it). Every example below was captured from a
 real, built release binary, run against a hand-written but structurally
 real URDF fixture (this repo ships no sample `.urdf` file of its own) — the
 output shown is real, not illustrative.
@@ -27,7 +28,7 @@ Bare invocation (no arguments) prints identity/version/role and exits `0`:
 ```
 $ hydra-umc-physics-replica
 HYDRA-UMC-PHYSICS-REPLICA v0.0.7
-URDF forward kinematics and joint-limit validation for serial chains (no dynamics, no physics engine).
+URDF forward kinematics and joint-limit validation for kinematic trees (no dynamics, no physics engine).
 ```
 
 ## Reader rules
@@ -41,7 +42,12 @@ URDF forward kinematics and joint-limit validation for serial chains (no dynamic
   velocity only (its `lower`/`upper` are ignored, they used to lock it at 0), and a fixed joint has none.
 * A revolute or prismatic joint with no `<limit>` cannot be checked: `fk-checked` and `validate-limits` exit `2`
   naming it.
-* Not supported: `<mimic>`, `<safety_controller>`, floating and planar joints, branching trees.
+* `<mimic joint multiplier offset>`: the joint follows another, `multiplier * master + offset` (a follower of a follower works; a
+  follower that names no joint, itself, a fixed joint, or follows in a circle is refused; a position given for a follower is refused
+  because it is derived, never chosen). The limits of a follower are checked with the position its master gives it.
+* `<limit effort velocity>` of every joint type and `<safety_controller soft_lower_limit soft_upper_limit k_position k_velocity>`
+  (the soft range must be ordered and inside the hard limit).
+* Not supported: floating and planar joints.
 * Units are those of URDF: metres and radians.
 * A name in `--joints` that the URDF does not have, or one given twice, is an error (exit `2`).
 
@@ -172,7 +178,7 @@ $ hydra-umc-physics-replica fk-checked --urdf arm.urdf --joints "shoulder=0.5,el
 LIMIT VIOLATION: joint 'elbow' = 5.000000 (allowed [-2.000000, 2.000000]) - refusing to compute an unreachable pose
 ```
 
-### `validate-limits --urdf PATH --joints "name=value,..." [--allow-partial]`
+### `validate-limits --urdf PATH --joints "name=value,..." [--allow-partial] [--soft] [--velocities "name=value,..."] [--efforts "name=value,..."]`
 
 Reports every joint whose given position is outside its own `<limit>` —
 without computing any pose at all (unlike `fk-checked`, which refuses to
@@ -181,6 +187,12 @@ position within 1e-9 of a limit is inside it (unit-conversion noise). Every
 joint that has a limit needs a position in `--joints`: a joint left out
 would be a check that was not made, so it is an error (exit `2`) unless
 `--allow-partial` says that only the joints given are to be checked.
+
+`--soft` also checks the soft range of a `<safety_controller>` (`SOFT LIMIT VIOLATION`, exit `1`): inside the hard limit, but where the
+controller of the robot starts to push back. `--velocities` and `--efforts` take a `name=value` list like `--joints` and check the
+magnitude of each against the `velocity` and `effort` of that joint's `<limit>` (`VELOCITY LIMIT VIOLATION`, `EFFORT LIMIT VIOLATION`,
+exit `1`; the sign does not matter); a joint with no such limit, or one that does not exist, is an error (exit `2`), never a pass.
+A joint that follows another (`<mimic>`) is not given in `--joints`: it is checked at the position its master gives it.
 
 **No violations** (exit `0`):
 
@@ -209,6 +221,5 @@ LIMIT VIOLATION: joint 'shoulder' = 10.000000 (allowed [-3.141590, 3.141590])
 This is a real, deliberately partial URDF reader and kinematics engine, not
 a MuJoCo/PhysX simulation yet — see the module docs at the top of
 `src/main.rs` and `src/urdf.rs` for the honest scope: a real `parent`/
-`child` tree walk into a single serial chain (a link with more than one
-child joint — a genuine branching tree — is refused, not flattened), and no
-actual rigid-body or contact simulation.
+`child` tree walk (branches included, `<mimic>` followers worked out), and no
+actual rigid-body or contact simulation, no Jacobian and no inverse kinematics.

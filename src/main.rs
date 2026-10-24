@@ -10,9 +10,10 @@
 //!
 //! Real v0 subcommands - `fk` (forward kinematics) and `validate-limits` -
 //! run this project's actual kinematic-validation logic over a (documented,
-//! partial) URDF subset. See `urdf.rs`/`kinematics.rs`/`limits.rs` for what
-//! "real" means here, and what is still out of scope (branching URDF trees,
-//! any actual MuJoCo/PhysX rigid-body or contact simulation).
+//! partial) URDF subset: serial chains and branching trees, `<mimic>` joints,
+//! and the position, soft, velocity and effort limits. See `urdf.rs`/
+//! `kinematics.rs`/`limits.rs` for what "real" means here, and what is still
+//! out of scope (any actual MuJoCo/PhysX rigid-body or contact simulation).
 
 #[cfg(test)]
 mod corpus;
@@ -33,7 +34,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const ESTIMATE_NOTICE: &str = "note: kinematic estimate from the URDF geometry only - no dynamics, and not calibrated against a physical robot";
 
 const ROLE: &str =
-    "URDF forward kinematics and joint-limit validation for serial chains (no dynamics, no physics engine).";
+    "URDF forward kinematics and joint-limit validation for kinematic trees (no dynamics, no physics engine).";
 
 /// Parses `"name=value,name=value"` into a position map. Returns `Err` with
 /// a human-readable reason for the first malformed entry found.
@@ -139,10 +140,46 @@ fn find_flag(args: &[String], flag: &str) -> Option<String> {
         .cloned()
 }
 
-fn load_chain(urdf_path: &str) -> Result<urdf::Chain, String> {
+fn load_model(urdf_path: &str) -> Result<urdf::Model, String> {
     let xml =
         fs::read_to_string(urdf_path).map_err(|e| format!("could not read '{urdf_path}': {e}"))?;
-    urdf::parse_urdf(&xml).map_err(|e| e.to_string())
+    urdf::parse_urdf_model(&xml).map_err(|e| e.to_string())
+}
+
+/// The given positions plus, for every joint that follows another (`<mimic>`), the position its master gives it, when the master has one.
+/// A position given for a follower is an error: it is derived, never chosen.
+fn positions_with_followers(
+    model: &urdf::Model,
+    given: &HashMap<String, f64>,
+) -> Result<HashMap<String, f64>, String> {
+    let mut all = given.clone();
+    for (index, joint) in model.chain.joints.iter().enumerate() {
+        if model.extras[index].mimic.is_some() && given.contains_key(&joint.name) {
+            return Err(format!(
+                "a position was given for joint '{}', which follows another joint (<mimic>): its position is derived",
+                joint.name
+            ));
+        }
+    }
+    loop {
+        let mut changed = false;
+        for (index, joint) in model.chain.joints.iter().enumerate() {
+            let Some(mimic) = &model.extras[index].mimic else {
+                continue;
+            };
+            if all.contains_key(&joint.name) {
+                continue;
+            }
+            if let Some(master) = all.get(&mimic.joint) {
+                let value = mimic.multiplier * master + mimic.offset;
+                all.insert(joint.name.clone(), value);
+                changed = true;
+            }
+        }
+        if !changed {
+            return Ok(all);
+        }
+    }
 }
 
 fn run_fk(args: &[String]) -> ExitCode {
@@ -152,8 +189,8 @@ fn run_fk(args: &[String]) -> ExitCode {
     };
     let joints_spec = find_flag(args, "--joints").unwrap_or_default();
 
-    let chain = match load_chain(&urdf_path) {
-        Ok(c) => c,
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
         Err(e) => {
             eprintln!("fk: {e}");
             return ExitCode::from(2);
@@ -167,12 +204,12 @@ fn run_fk(args: &[String]) -> ExitCode {
         }
     };
 
-    if let Err(e) = check_joint_names(&chain, &positions) {
+    if let Err(e) = check_joint_names(&model.chain, &positions) {
         eprintln!("fk: {e}");
         return ExitCode::from(2);
     }
 
-    match kinematics::forward_kinematics(&chain, &positions) {
+    match kinematics::forward_kinematics_model(&model, &positions) {
         Ok(result) => {
             eprintln!("{ESTIMATE_NOTICE}");
             print_poses(&result, has_flag(args, "--json"));
@@ -192,8 +229,8 @@ fn run_fk_checked(args: &[String]) -> ExitCode {
     };
     let joints_spec = find_flag(args, "--joints").unwrap_or_default();
 
-    let chain = match load_chain(&urdf_path) {
-        Ok(c) => c,
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
         Err(e) => {
             eprintln!("fk-checked: {e}");
             return ExitCode::from(2);
@@ -207,12 +244,12 @@ fn run_fk_checked(args: &[String]) -> ExitCode {
         }
     };
 
-    if let Err(e) = check_joint_names(&chain, &positions) {
+    if let Err(e) = check_joint_names(&model.chain, &positions) {
         eprintln!("fk-checked: {e}");
         return ExitCode::from(2);
     }
 
-    match kinematics::forward_kinematics_checked(&chain, &positions) {
+    match kinematics::forward_kinematics_checked_model(&model, &positions) {
         Ok(result) => {
             eprintln!("{ESTIMATE_NOTICE}");
             print_poses(&result, has_flag(args, "--json"));
@@ -248,14 +285,15 @@ fn run_validate_limits(args: &[String]) -> ExitCode {
     };
     let joints_spec = find_flag(args, "--joints").unwrap_or_default();
 
-    let chain = match load_chain(&urdf_path) {
-        Ok(c) => c,
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
         Err(e) => {
             eprintln!("validate-limits: {e}");
             return ExitCode::from(2);
         }
     };
-    let positions = match parse_joint_positions(&joints_spec) {
+    let chain = &model.chain;
+    let given = match parse_joint_positions(&joints_spec) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("validate-limits: invalid --joints value: {e}");
@@ -263,9 +301,60 @@ fn run_validate_limits(args: &[String]) -> ExitCode {
         }
     };
 
-    if let Err(e) = check_joint_names(&chain, &positions) {
+    if let Err(e) = check_joint_names(chain, &given) {
         eprintln!("validate-limits: {e}");
         return ExitCode::from(2);
+    }
+    // The followers (<mimic>) have the position their master gives them.
+    let positions = match positions_with_followers(&model, &given) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("validate-limits: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    // The speeds and efforts to check, by joint name (--velocities and --efforts take the same name=value list as --joints).
+    let mut magnitudes: Vec<(&str, &str, HashMap<String, f64>)> = Vec::new();
+    for (flag, kind) in [("--velocities", "velocity"), ("--efforts", "effort")] {
+        let Some(spec) = find_flag(args, flag) else {
+            continue;
+        };
+        let values = match parse_joint_positions(&spec) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("validate-limits: invalid {flag} value: {e}");
+                return ExitCode::from(2);
+            }
+        };
+        if let Err(e) = check_joint_names(chain, &values) {
+            eprintln!("validate-limits: {flag}: {e}");
+            return ExitCode::from(2);
+        }
+        let unchecked: Vec<&str> = values
+            .keys()
+            .filter(|name| {
+                let index = chain
+                    .joints
+                    .iter()
+                    .position(|j| &j.name == *name)
+                    .unwrap_or(0);
+                let limit = if kind == "velocity" {
+                    model.extras[index].velocity_limit
+                } else {
+                    model.extras[index].effort_limit
+                };
+                limit.is_none()
+            })
+            .map(String::as_str)
+            .collect();
+        if !unchecked.is_empty() {
+            eprintln!(
+                "validate-limits: joint(s) {} have no {kind} limit in the URDF: they cannot be checked",
+                unchecked.join(", ")
+            );
+            return ExitCode::from(2);
+        }
+        magnitudes.push((flag, kind, values));
     }
     // A joint with a limit and no position given is a check that was not
     // made: "No limit violations." must not be said about it.
@@ -284,7 +373,7 @@ fn run_validate_limits(args: &[String]) -> ExitCode {
             return ExitCode::from(2);
         }
     }
-    let missing = limits::joints_without_limits(&chain);
+    let missing = limits::joints_without_limits(chain);
     if !missing.is_empty() {
         eprintln!(
             "validate-limits: joint(s) {} have no <limit>: they cannot be checked",
@@ -293,8 +382,22 @@ fn run_validate_limits(args: &[String]) -> ExitCode {
         return ExitCode::from(2);
     }
 
-    let violations = limits::validate_limits(&chain, &positions);
-    if violations.is_empty() {
+    let violations = limits::validate_limits(chain, &positions);
+    let soft_violations = if has_flag(args, "--soft") {
+        limits::soft_limit_violations(&model, &positions)
+    } else {
+        Vec::new()
+    };
+    let mut speed_violations: Vec<(&str, limits::MagnitudeViolation)> = Vec::new();
+    for (_, kind, values) in &magnitudes {
+        let found = if *kind == "velocity" {
+            limits::velocity_violations(&model, values)
+        } else {
+            limits::effort_violations(&model, values)
+        };
+        speed_violations.extend(found.into_iter().map(|v| (*kind, v)));
+    }
+    if violations.is_empty() && soft_violations.is_empty() && speed_violations.is_empty() {
         println!("No limit violations.");
         ExitCode::SUCCESS
     } else {
@@ -302,6 +405,21 @@ fn run_validate_limits(args: &[String]) -> ExitCode {
             println!(
                 "LIMIT VIOLATION: joint '{}' = {:.6} (allowed [{:.6}, {:.6}])",
                 v.joint, v.value, v.lower, v.upper
+            );
+        }
+        for v in &soft_violations {
+            println!(
+                "SOFT LIMIT VIOLATION: joint '{}' = {:.6} (soft range [{:.6}, {:.6}])",
+                v.joint, v.value, v.lower, v.upper
+            );
+        }
+        for (kind, v) in &speed_violations {
+            println!(
+                "{} LIMIT VIOLATION: joint '{}' = {:.6} (at most {:.6})",
+                kind.to_uppercase(),
+                v.joint,
+                v.value,
+                v.limit
             );
         }
         ExitCode::from(1)

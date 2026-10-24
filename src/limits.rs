@@ -11,7 +11,7 @@
 
 use std::collections::HashMap;
 
-use crate::urdf::{Chain, JointType};
+use crate::urdf::{Chain, JointType, Model};
 
 /// The tolerance a position may exceed a limit by: absorbs the noise of
 /// converting degrees to radians and back without letting a real overshoot by.
@@ -77,6 +77,76 @@ pub fn validate_limits(chain: &Chain, positions: &HashMap<String, f64>) -> Vec<L
         }
     }
     violations
+}
+
+/// Positions outside the soft limits of a `<safety_controller>`: still inside the hard `<limit>`, but where the controller of the robot
+/// starts to push back, so a command there is a command the robot will not carry out the way it was given.
+pub fn soft_limit_violations(
+    model: &Model,
+    positions: &HashMap<String, f64>,
+) -> Vec<LimitViolation> {
+    let mut violations = Vec::new();
+    for (index, joint) in model.chain.joints.iter().enumerate() {
+        let (Some(soft), Some(&value)) = (model.extras[index].soft, positions.get(&joint.name))
+        else {
+            continue;
+        };
+        if !value.is_finite()
+            || value < soft.lower - LIMIT_TOLERANCE
+            || value > soft.upper + LIMIT_TOLERANCE
+        {
+            violations.push(LimitViolation {
+                joint: joint.name.clone(),
+                value,
+                lower: soft.lower,
+                upper: soft.upper,
+            });
+        }
+    }
+    violations
+}
+
+/// A speed or an effort above what `<limit velocity>` or `<limit effort>` allows (the magnitude is what counts, not the sign).
+#[derive(Debug, Clone, PartialEq)]
+pub struct MagnitudeViolation {
+    pub joint: String,
+    pub value: f64,
+    pub limit: f64,
+}
+
+fn magnitude_violations(
+    model: &Model,
+    values: &HashMap<String, f64>,
+    limit_of: impl Fn(usize) -> Option<f64>,
+) -> Vec<MagnitudeViolation> {
+    let mut violations = Vec::new();
+    for (index, joint) in model.chain.joints.iter().enumerate() {
+        let (Some(limit), Some(&value)) = (limit_of(index), values.get(&joint.name)) else {
+            continue;
+        };
+        // a value that is not a number never passes
+        if !value.is_finite() || value.abs() > limit + LIMIT_TOLERANCE {
+            violations.push(MagnitudeViolation {
+                joint: joint.name.clone(),
+                value,
+                limit,
+            });
+        }
+    }
+    violations
+}
+
+/// The joints asked to move faster than their `<limit velocity>`.
+pub fn velocity_violations(
+    model: &Model,
+    velocities: &HashMap<String, f64>,
+) -> Vec<MagnitudeViolation> {
+    magnitude_violations(model, velocities, |i| model.extras[i].velocity_limit)
+}
+
+/// The joints asked for more force or torque than their `<limit effort>`.
+pub fn effort_violations(model: &Model, efforts: &HashMap<String, f64>) -> Vec<MagnitudeViolation> {
+    magnitude_violations(model, efforts, |i| model.extras[i].effort_limit)
 }
 
 #[cfg(test)]
