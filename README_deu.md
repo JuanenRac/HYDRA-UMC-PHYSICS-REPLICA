@@ -23,7 +23,7 @@
 
 | | |
 |---|---|
-| Version | `0.0.8` |
+| Version | `0.0.9` |
 | Reifegrad | Funktionsfähig |
 | Technik | Rust / roxmltree / URDF forward kinematics |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |

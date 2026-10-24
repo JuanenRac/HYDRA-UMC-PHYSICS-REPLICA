@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.0.9] - A branching URDF is read whole and `<mimic>`
 
 - **A branching URDF is read whole.** `parse_urdf_model` returns a `Model`: the joints in parent-before-child order, the index of each joint's parent joint and the extras of every joint; forward kinematics places each joint from the joint that carries its parent link, so the two fingers of a gripper are both placed from the palm. `parse_urdf` keeps its flat serial `Chain` and still refuses a branch with a real error. `fk`, `fk-checked` and `validate-limits` read trees.
 - **`<mimic>`** (`multiplier * master + offset`, followers of followers included): a follower has no position of its own, a position given for one is refused, and its limits are checked with the position its master gives it; a mimic that names no joint, itself, a fixed joint or a circle of followers is refused when the file is read.
