@@ -104,13 +104,17 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # 実際の validate_limits()
 │   ├── corpus.rs         # テスト専用の可動域フィクスチャコーパス
 │   └── main.rs           # エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド
+├── tests/            # cli_contract.rs と tree_contract.rs: コマンドラインのエラー (綴り違い・重複・欠落した関節) と、枝および mimic 関節の配置
 ├── docs/
 │   └── CLI_REFERENCE.md # 完全なコマンドラインリファレンス、すべての終了コードとエラーケース
 ├── build/               # ビルドノート/成果物（cargo 自身の出力は target/ にあり、gitignore 対象）
 ├── images/              # メディアと図表
 ├── tools/
 │   ├── build_test.py    # バージョンを増やさないビルドチェック
-│   └── ci_validate.py   # CI が使用するマニフェスト/CHANGELOG/ドキュメント検証
+│   ├── ci_validate.py   # CI が使用するマニフェスト/CHANGELOG/ドキュメント検証
+│   ├── _doc_policy.py   # ファミリー共通のドキュメント規則 (HYDRA-UMC-SDK のコピーで、同期を維持)
+│   ├── _readme_parity.py # 8つの README が同じ構造であることの検査 (HYDRA-UMC-SDK のコピーで、同期を維持)
+│   └── hydra_project_tool.py # すべてのリポジトリで共通のコマンド: validate、test、ci、version、status、bump
 ├── Cargo.toml           # パッケージメタデータ、依存関係（roxmltree）、オドメーターバージョン
 ├── bump_version.py      # オドメーター式バージョンインクリメント（明示的な `bump` コマンドのみが実行）
 ├── bump_manifest_version.py # hydra-umc.project.json のバージョンをネイティブ版と同期(--sync)

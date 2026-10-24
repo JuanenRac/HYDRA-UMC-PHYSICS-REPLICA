@@ -102,13 +102,17 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # 真实的 validate_limits()
 │   ├── corpus.rs         # 仅用于测试的限位 fixture 语料库
 │   └── main.rs           # 入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令
+├── tests/            # cli_contract.rs 和 tree_contract.rs: 命令行错误 (关节拼写错误、重复或缺失) 以及分支与 mimic 关节的放置
 ├── docs/
 │   └── CLI_REFERENCE.md # 完整命令行参考，涵盖每个退出码和错误情形
 ├── build/               # 构建笔记/产物（cargo 自身的输出位于 target/，已被 gitignore）
 ├── images/              # 媒体与图表
 ├── tools/
 │   ├── build_test.py    # 不递增版本号的构建检查
-│   └── ci_validate.py   # CI 使用的清单/CHANGELOG/文档校验
+│   ├── ci_validate.py   # CI 使用的清单/CHANGELOG/文档校验
+│   ├── _doc_policy.py   # 家族共享的文档规则 (HYDRA-UMC-SDK 的副本,保持同步)
+│   ├── _readme_parity.py # 检查八个 README 结构一致 (HYDRA-UMC-SDK 的副本,保持同步)
+│   └── hydra_project_tool.py # 每个仓库相同的命令: validate、test、ci、version、status、bump
 ├── Cargo.toml           # 包元数据、依赖项（roxmltree）、里程表版本号
 ├── bump_version.py      # 里程表式版本递增（仅由显式 `bump` 命令运行）
 ├── bump_manifest_version.py # 将 hydra-umc.project.json 的版本与原生版本同步(--sync)

@@ -104,13 +104,17 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs         # validate_limits() réel
 │   ├── corpus.rs         # Corpus de fixtures de limites, réservé aux tests
 │   └── main.rs           # Point d'entrée + sous-commandes réelles `fk`/`fk-checked`/`validate-limits`
+├── tests/            # cli_contract.rs et tree_contract.rs : les erreurs de la ligne de commande (articulations mal orthographiées, répétées ou manquantes) et le placement des branches et des articulations mimic
 ├── docs/
 │   └── CLI_REFERENCE.md # Référence complète de la ligne de commande, chaque code de sortie et cas d'erreur
 ├── build/               # Notes/artefacts de build (la sortie réelle de cargo vit dans target/, ignoré par git)
 ├── images/              # Médias et diagrammes
 ├── tools/
 │   ├── build_test.py    # Vérification de build sans versionnage
-│   └── ci_validate.py   # Validation manifeste/CHANGELOG/docs utilisée par CI
+│   ├── ci_validate.py   # Validation manifeste/CHANGELOG/docs utilisée par CI
+│   ├── _doc_policy.py   # Règles de documentation partagées par la famille (copie de celle de HYDRA-UMC-SDK, tenue synchronisée)
+│   ├── _readme_parity.py # Contrôle que les huit README partagent la même structure (copie de celui de HYDRA-UMC-SDK, tenue synchronisée)
+│   └── hydra_project_tool.py # Les mêmes commandes dans chaque dépôt : validate, test, ci, version, status, bump
 ├── Cargo.toml           # Métadonnées du paquet, dépendances (roxmltree), version compteur kilométrique
 ├── bump_version.py      # Incrément de version type compteur kilométrique (exécuté seulement par la commande `bump` explicite)
 ├── bump_manifest_version.py # Synchronise la version de hydra-umc.project.json avec la version native (--sync)
