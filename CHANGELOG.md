@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+- **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
+
 ## [0.0.9] - A branching URDF is read whole and `<mimic>`
 
 - **A branching URDF is read whole.** `parse_urdf_model` returns a `Model`: the joints in parent-before-child order, the index of each joint's parent joint and the extras of every joint; forward kinematics places each joint from the joint that carries its parent link, so the two fingers of a gripper are both placed from the palm. `parse_urdf` keeps its flat serial `Chain` and still refuses a branch with a real error. `fk`, `fk-checked` and `validate-limits` read trees.
