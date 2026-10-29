@@ -1,23 +1,34 @@
+<!-- =============================================================================
+HYDRA-UMC-PHYSICS-REPLICA - Digital twin module
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-PHYSICS-REPLICA banner" width="100%">
 </p>
 
-# 🏗️ HYDRA-UMC-PHYSICS-REPLICA
+# 📐 HYDRA-UMC-PHYSICS-REPLICA
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | 🇪🇸 <b>Español</b> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 📐 Cinemática directa de URDF y validación de límites de articulación
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Lenguaje-Rust-orange.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Etapa-Funcional%20v0-yellow.svg" alt="Etapa funcional v0">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
+  <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
+  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
 > **Estado de seguridad física y de ciberseguridad:** este ecosistema no es un sistema de seguridad certificado. Todavía no existe una ruta de E-STOP por hardware, ni límites ni enclavamientos aplicados por el firmware, ni un comando de movimiento verificado; las imágenes de firmware se comprueban con CRC32 y un HMAC-SHA256 de clave compartida, no con una firma asimétrica; TLS y TLS mutuo son opcionales y están desactivados por defecto; aún no se ha poblado ni probado ninguna placa propia. Lee la [línea base de seguridad](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md) y el [modelo de amenazas](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md) antes de fiarte de cualquier afirmación de aquí para la seguridad de una persona.
+
+---
 
 ## 📋 De un vistazo
 
@@ -25,8 +36,11 @@
 |---|---|
 | Versión | `0.0.9` |
 | Madurez | Funcional |
+| Tests | 86 (`cargo test`) |
 | Tecnología | Rust / roxmltree / URDF forward kinematics |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
+
+**Ir a:** [Resumen](#-resumen) · [Arquitectura](#-arquitectura) · [Inicio rápido](#-inicio-rápido) · [Pruebas](#-pruebas) · [Estructura del repositorio](#-estructura-del-repositorio) · [Proyectos relacionados](#-proyectos-relacionados)
 
 ## 🚦 Estado del proyecto
 
@@ -37,11 +51,11 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟠 | Todavía no consta el número de pruebas de este repositorio |
+| Pruebas | 🟢 | 86 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 | Documentación | 🟢 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
 
-## 1. 🛠️ VISIÓN GENERAL TÉCNICA
+## 🎯 Resumen
 
 **HYDRA-UMC-PHYSICS-REPLICA** es el módulo de cinemática del Gemelo Digital: lee un árbol cinemático URDF (brazos serie y ramificados como una pinza), calcula la pose de cada articulación (cinemática directa) y comprueba las posiciones de las articulaciones frente a sus límites. No simula dinámica: no hay modelo de cuerpo rígido, contacto ni fricción, ni MuJoCo ni PhysX; eso es la hoja de ruta.
 
@@ -57,15 +71,18 @@ Las unidades son las de URDF (metros y radianes). `fk` imprime la posición de c
 
 **Comprobación de honestidad - qué funciona hoy de verdad:** `fk --urdf RUTA --joints "j1=0.5,..."` calcula posiciones reales en el mundo por articulación encadenando las transformaciones de las articulaciones del URDF, sin importar si una posición está dentro de su límite declarado; `fk-checked` ejecuta el mismo cálculo pero comprueba primero cada posición contra la verificación real de `validate-limits`, negándose a calcular (o reportar) ninguna pose si algo está fuera de rango; `validate-limits --urdf RUTA --joints "..."` reporta articulaciones reales fuera de rango por su cuenta. Los tres son cinemática pura - sin dinámica de cuerpo rígido, sin fuerzas de contacto, sin ningún solver MuJoCo/PhysX conectado todavía, y el lector de URDF recorre el árbol real de enlaces `parent`/`child`, ramas incluidas (cada articulación se coloca a partir de la articulación que lleva su enlace padre), calcula las articulaciones que siguen a otra (`<mimic>`) y, si se pide, comprueba también los límites blandos de un `<safety_controller>` y los límites de velocidad y esfuerzo (`validate-limits --soft --velocities ... --efforts ...`). Ver [`CHANGELOG.md`](CHANGELOG.md) para lo entregado exactamente, y la Hoja de Ruta abajo para lo que sigue por delante.
 
----
+## 🧩 Papel en HYDRA-UMC
 
-## 2. 🔄 PIPELINE DE FÍSICA
+**HYDRA-UMC-PHYSICS-REPLICA** es el módulo de cinemática del gemelo digital: lee un árbol URDF, calcula la pose de cada articulación (cinemática directa) y comprueba las posiciones de las articulaciones contra sus límites. No simula dinámica: no hay modelo de contacto, de fricción ni de cuerpo rígido.
 
-`URDF` (parseo) y un paso real e independiente de cinemática (`fk`/
-`validate-limits`, no mostrado como caja propia abajo ya que sustituye el
-rol de `SOLVE` en v0) son reales hoy. `MESH`, el paso `SOLVE` real (un
-solver MuJoCo/PhysX de verdad), `DYN` y `TWIN` siguen siendo trabajo
-futuro.
+## 🏛️ Arquitectura
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-PHYSICS-REPLICA architecture" width="100%">
+</p>
+
+<details>
+<summary>Versión en texto del diagrama (Mermaid)</summary>
 
 ```mermaid
 flowchart LR
@@ -75,9 +92,17 @@ flowchart LR
     DYN --> TWIN["Viewport HYDRA-UMC-TWIN - planeado"]
 ```
 
----
+</details>
 
-## 3. 🧱 ARQUITECTURA Y DECISIONES DE DISEÑO
+### PIPELINE DE FÍSICA
+
+`URDF` (parseo) y un paso real e independiente de cinemática (`fk`/
+`validate-limits`, no mostrado como caja propia abajo ya que sustituye el
+rol de `SOLVE` en v0) son reales hoy. `MESH`, el paso `SOLVE` real (un
+solver MuJoCo/PhysX de verdad), `DYN` y `TWIN` siguen siendo trabajo
+futuro.
+
+### ARQUITECTURA Y DECISIONES DE DISEÑO
 
 * **Por qué esta simulación no tiene carpetas `hardware/`/`firmware/`/`os/`.** Software puro - sin placa propia, así que esas carpetas se podaron en vez de dejarlas vacías.
 * **Por qué es hermana, no un submódulo, de HYDRA-UMC-TWIN.** El solucionador de física corre a su propia frecuencia de tick, independiente del renderizado - mantenerlo como proceso separado significa que un paso de física lento no bloquea la propia tasa de fotogramas de HYDRA-UMC-TWIN, y cualquiera de los dos puede sustituirse/actualizarse (ej. MuJoCo frente a PhysX) sin tocar el otro.
@@ -87,51 +112,30 @@ flowchart LR
 * **Por qué `fk-checked` es un subcomando nuevo en vez de cambiar `fk` in situ.** `fk` es la utilidad de bajo nivel existente, matemática pura - algunos llamadores (ej. ajustar un límite en sí mismo) genuinamente quieren la pose sin verificar para un valor fuera de rango. `fk-checked` añade el punto de entrada a prueba de fallos, con verja de límites, que los llamadores reales deberían usar, sin cambiar en silencio lo que `fk` siempre ha significado.
 * **Por qué el corpus de límites de articulación (`corpus.rs`) es solo para tests.** Existe puramente para darle a los tests de regresión de `limits.rs` y `kinematics.rs` un único conjunto de fixtures real y compartido en vez de literales ad hoc duplicados - no tiene razón para incluirse en el binario de release, así que está protegido tras `#[cfg(test)]`.
 
----
+## 🚀 Inicio rápido
 
-## 📂 ESTRUCTURA DE DIRECTORIOS
+Requiere la cadena de herramientas estable de Rust (edición 2021) con `cargo`.
 
-Motor de simulación puramente software, sin diseño de hardware propio; las
-carpetas de código solo se incluyen cuando su implementación las requiere,
-por lo que este proyecto no lleva `hardware/`, `firmware/` ni `os/`.
-
-```text
-HYDRA-UMC-PHYSICS-REPLICA/
-├── src/
-│   ├── transform.rs      # Vec3/Mat4 reales (traslación, rotación eje-ángulo, rpy)
-│   ├── urdf.rs           # Lector real y parcial de URDF (recorrido de árbol parent/child, ramas, mimic y límites)
-│   ├── kinematics.rs     # forward_kinematics() real + forward_kinematics_checked()
-│   ├── limits.rs         # validate_limits() real
-│   ├── corpus.rs         # Corpus de fixtures de limites, solo para tests
-│   └── main.rs           # Entry point + subcomandos reales `fk`/`fk-checked`/`validate-limits`
-├── tests/            # cli_contract.rs y tree_contract.rs: los errores de la línea de órdenes (articulaciones mal escritas, repetidas o ausentes) y la colocación de ramas y articulaciones mimic
-├── docs/
-│   └── CLI_REFERENCE.md # Referencia completa de línea de comandos, cada código de salida y caso de error
-├── build/               # Notas/artefactos de build (la salida real de cargo vive en target/, en .gitignore)
-├── images/              # Medios y diagramas
-├── tools/
-│   ├── build_test.py    # Comprobación de compilación sin versionado
-│   ├── ci_validate.py   # Validación de manifiesto/CHANGELOG/docs usada por CI
-│   ├── _doc_policy.py   # Reglas de documentación compartidas por la familia (copia de la de HYDRA-UMC-SDK, mantenida en sincronía)
-│   ├── _readme_parity.py # Comprobación de que los ocho README comparten estructura (copia de la de HYDRA-UMC-SDK, mantenida en sincronía)
-│   └── hydra_project_tool.py # Los mismos comandos en todos los repositorios: validate, test, ci, version, status, bump
-├── Cargo.toml           # Metadatos del paquete, dependencias (roxmltree), version cuentakilometros
-├── bump_version.py      # Incremento de versión tipo cuentakilómetros (solo lo ejecuta el comando `bump` explícito)
-├── bump_manifest_version.py # Sincroniza la versión de hydra-umc.project.json con la nativa (--sync)
-├── build.sh / build.bat # Valida y compila (compilar nunca cambia la versión)
-├── build-test.sh / build-test.bat # Comprobación de compilación sin versionado
-└── run.sh / run.bat     # Ejecuta el binario release compilado (reenvía argumentos)
+```bash
+./build.sh  # Linux, macOS (build.bat on Windows)
+./run.sh fk --urdf arm.urdf --joints "shoulder=0,elbow=0"
+./run.sh validate-limits --urdf arm.urdf --joints "shoulder=3.0,elbow=0.2"
+cargo test
 ```
 
----
+## 🧪 Pruebas
 
-## 🏗️ BUILD Y RUN
+86 pruebas automáticas se ejecutan con `cargo test`. No necesitan hardware ni nada fuera de esta máquina.
+
+El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
+
+## 🏗️ Compilación y publicación
 
 Requiere el toolchain de Rust (`cargo`/`rustc`, instalar vía [rustup](https://rustup.rs)) y Python 3.10+ (solo para `bump_version.py`).
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (64 tests), luego `cargo build --release`
+./build.sh   # `cargo test` (86 tests), luego `cargo build --release`
 ./run.sh     # ejecuta target/release/hydra-umc-physics-replica, imprime nombre + version + rol
 ```
 
@@ -172,17 +176,56 @@ El subcomando real `fk-checked` se niega a calcular una pose cuando una articula
 
 Ver [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md) para la referencia completa de línea de comandos, con cada caso de error real (argumentos faltantes/mal formados, un archivo URDF ilegible) capturado de una ejecución real del binario de release.
 
----
+## 📂 Estructura del repositorio
 
-## 🚀 HOJA DE RUTA
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-PHYSICS-REPLICA" width="100%">
+</p>
+
+<details>
+<summary>Versión en texto del árbol</summary>
+
+```text
+HYDRA-UMC-PHYSICS-REPLICA/
+├── src/                             código fuente
+│   ├── transform.rs                 Vec3/Mat4 reales (traslación, rotación eje-ángulo, rpy)
+│   ├── urdf.rs                      Lector real y parcial de URDF (recorrido de árbol parent/child, ramas, mimic y límites)
+│   ├── kinematics.rs                forward_kinematics() real + forward_kinematics_checked()
+│   ├── limits.rs                    validate_limits() real
+│   ├── corpus.rs                    Corpus de fixtures de limites, solo para tests
+│   └── main.rs                      Entry point + subcomandos reales `fk`/`fk-checked`/`validate-limits`
+├── tests/                           cli_contract.rs y tree_contract.rs: los errores de la línea de órdenes (articulaciones mal escritas, repetidas o ausentes) y la colocación de ramas y articulaciones mimic
+├── docs/                            documentos del proyecto
+├── images/                          Medios y diagramas
+├── tools/                           herramientas del proyecto y comprobaciones del CI
+├── .github/                         flujo de CI y plantillas de incidencias
+├── Cargo.toml                       Metadatos del paquete, dependencias (roxmltree), version cuentakilometros
+├── bump_version.py                  Incremento de versión tipo cuentakilómetros (solo lo ejecuta el comando `bump` explícito)
+├── bump_manifest_version.py         Sincroniza la versión de hydra-umc.project.json con la nativa (--sync)
+├── build.sh / build.bat             Valida y compila (compilar nunca cambia la versión)
+├── build-test.sh / build-test.bat   Comprobación de compilación sin versionado
+├── run.sh / run.bat                 Ejecuta el binario release compilado (reenvía argumentos)
+├── CHANGELOG.md                     qué cambió en cada versión
+├── hydra-umc.project.json           manifiesto: versión, madurez, familia
+└── test.sh                          ejecuta las pruebas
+```
+
+</details>
+
+## 🗺️ Hoja de ruta y límites conocidos
+
+**Límites conocidos hoy**
+
 * **Fase 1:** Sincronización de Digital Twin con telemetría de hardware en tiempo real y latencia sub-10ms.
 * **Fase 2:** Integración de Physics Replica con simuladores de grado industrial (Isaac Sim) y soporte para cuerpos deformables.
 * **Fase 3:** Patrones de recuperación automatizados de Node Healing para failover descentralizado y detección temprana de degradación de sensores.
 * **Fase 4:** Soporte para simulación de cuerpos deformables (cables y tubos de vacío) y generación de datos sintéticos fotorrealistas.
 
----
+## 🌍 Idiomas
 
-## 🔗 Proyectos Relacionados
+Este README y los documentos del repositorio existen en ocho idiomas: inglés, español, alemán, francés, italiano, japonés, chino y portugués (Portugal). Se escriben a la vez y el CI comprueba que los ocho ficheros tengan las mismas secciones y los mismos enlaces. Este repositorio no tiene pantalla ni catálogo de mensajes propios, así que no hay cadenas de interfaz que traducir.
+
+## 🔗 Proyectos relacionados
 
 Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (JuanenRac / Electro Hobby 3D). Vale la pena conocerlo, ya que una petición podría en realidad ser sobre alguno de estos en vez de sobre este repositorio.
 
@@ -273,21 +316,26 @@ Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (Ju
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordinador de incidencias de mantenimiento: un rol edge de bajo privilegio recopila un snapshot de inventario/salud saneado, un rol control-plane lo renderiza de solo lectura y pide a un proveedor de IA que sugiera un diagnóstico - nunca aplica un parche ni despliega nada.
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — host de desarrollo reproducible (Raspberry Pi 5 / CM5) que almacena el código del ecosistema y ejecuta tareas acotadas de compilación/pruebas bajo una cola duradera; un rol de desarrollo dedicado, explícitamente distinto de un CM5 operativo.
 
+## 📚 Documentación
 
----
+Dónde leer más:
 
-## 📚 Documentación y Comunidad
+* [Base de seguridad del ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [Modelo de amenazas del ecosistema](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [Historial de cambios de este repositorio](CHANGELOG.md)
+* [Licencia de este repositorio](LICENSE.md)
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — stack tecnológico y pautas de codificación para un pull request.
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — los estándares de comportamiento esperados en esta comunidad.
-- **[SECURITY.md](SECURITY.md)** — cómo reportar una vulnerabilidad, y las áreas reales de enfoque en seguridad de este proyecto.
-- **[SUPPORT.md](SUPPORT.md)** — dónde hacer preguntas y reportar errores.
-- **[LICENSE.md](LICENSE.md)** — la licencia propia de este proyecto.
+## 🤝 Contribuir y comunidad
+
+* Antes de un pull request ejecuta `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py` (o `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`): debe imprimir `CI_VALIDATION=PASS`. No ejecutes `build.sh` ni `build.bat` para esta comprobación; compilar no es comprobar.
+* Los ocho README se escriben desde una sola fuente en HYDRA-UMC-DOCS; no los edites a mano. Cambia la fuente y vuelve a escribirlos con `tools/make_readmes.py`.
+* No afirmes en un README lo que no se ha ejecutado: di «simulado» o «sin probar en hardware» cuando esa sea la verdad.
+* Mira [CONTRIBUTING.md](CONTRIBUTING.md), el [código de conducta](CODE_OF_CONDUCT.md), [SECURITY.md](SECURITY.md) y [SUPPORT.md](SUPPORT.md).
 
 ## 👤 AUTOR
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 LICENCIA
-GPL-3.0 - Ver archivo LICENSE para más detalles.
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

@@ -1,23 +1,34 @@
+<!-- =============================================================================
+HYDRA-UMC-PHYSICS-REPLICA - Digital twin module
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-PHYSICS-REPLICA banner" width="100%">
 </p>
 
-# 🏗️ HYDRA-UMC-PHYSICS-REPLICA
+# 📐 HYDRA-UMC-PHYSICS-REPLICA
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | <a href="README_zho.md">🇨🇳 简体中文</a> | 🇯🇵 <b>日本語</b> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 📐 URDF の順運動学と関節リミット検証
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Stage-%E6%A9%9F%E8%83%BD%E6%AE%B5%E9%9A%8E%20v0-yellow.svg" alt="機能段階 v0">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
+  <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
+  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
 > **安全性とセキュリティの現状:** このエコシステムは認証された安全システムではありません。ハードウェアの E-STOP 経路、ファームウェアが強制する制限やインターロック、検証済みの動作コマンドはまだありません。ファームウェアイメージは CRC32 と共有鍵の HMAC-SHA256 で検査しており、非対称署名ではありません。TLS と相互 TLS は任意で、既定では無効です。独自基板はまだ実装も試験もされていません。ここに書かれた内容を人の安全のために頼る前に、[セキュリティベースライン](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)と[脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)をお読みください。
+
+---
 
 ## 📋 ひと目で
 
@@ -25,8 +36,11 @@
 |---|---|
 | バージョン | `0.0.9` |
 | 成熟度 | 機能する |
+| テスト | 86 (`cargo test`) |
 | 技術 | Rust / roxmltree / URDF forward kinematics |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
+
+**移動：** [概要](#-概要) · [アーキテクチャ](#-アーキテクチャ) · [クイックスタート](#-クイックスタート) · [テスト](#-テスト) · [リポジトリの構成](#-リポジトリの構成) · [関連プロジェクト](#-関連プロジェクト)
 
 ## 🚦 プロジェクトの状況
 
@@ -37,11 +51,11 @@
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟠 | このリポジトリのテスト件数はまだ記録されていません |
+| テスト | 🟢 | 自動テスト 86 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | ドキュメント | 🟢 | 8 言語の README。変更のたびにマニフェストと照合されます |
 
-## 1. 🛠️ 技術概要
+## 🎯 概要
 
 **HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF の運動学ツリー（シリアルアームと、グリッパーのような分岐するもの）を読み込み、各関節の姿勢（順運動学）を計算し、関節位置をそのリミットと照合します。動力学はシミュレートしません。剛体・接触・摩擦のモデルも MuJoCo や PhysX もなく、それらはロードマップです。
 
@@ -57,15 +71,18 @@
 
 **正直な現状確認 —— 今日実際に動くもの：** `fk --urdf パス --joints "j1=0.5,..."` は、URDF の関節変換を連鎖させることで、その位置が宣言された可動域内にあるかどうかに関わらず、各関節の実際のワールド座標位置を計算します。`fk-checked` は同じ計算を行いますが、まず各位置を `validate-limits` の実際のチェックに通し、何かが範囲外であればポーズの計算（および報告）自体を拒否します。`validate-limits --urdf パス --joints "..."` は、実際に可動域を超えた関節を単独で報告します。3 つとも純粋な運動学です——剛体力学も、接触力も、MuJoCo/PhysX ソルバーの接続もまだなく、URDF リーダーは実際の `parent`/`child` リンクツリーを分岐も含めて辿り（各関節は親リンクを持つ関節から配置されます）、他の関節に従う関節（`<mimic>`）を計算し、求められれば `<safety_controller>` のソフトリミットと速度・力のリミットも検査します（`validate-limits --soft --velocities ... --efforts ...`）。実際に出荷済みの内容は [`CHANGELOG.md`](CHANGELOG.md) を、まだ残っている作業は下記のロードマップを参照してください。
 
----
+## 🧩 HYDRA-UMC での役割
 
-## 2. 🔄 物理パイプライン
+**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF のツリーを読み、各関節の姿勢を計算し（順運動学）、関節の位置を制限に照らして検証します。動力学のシミュレーションは行わず、接触、摩擦、剛体のモデルはありません。
 
-`URDF`（パース）と、実際の独立した運動学ステップ（`fk`/
-`validate-limits`。v0 では `SOLVE` の役割を代替するため、下図では
-独立したボックスとして示していません）は今日すでに実際に動作します。
-`MESH`、実際の `SOLVE` ステップ（本物の MuJoCo/PhysX ソルバー）、`DYN`、
-`TWIN` はいずれも今後の課題のままです。
+## 🏛️ アーキテクチャ
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-PHYSICS-REPLICA architecture" width="100%">
+</p>
+
+<details>
+<summary>図のテキスト版（Mermaid）</summary>
 
 ```mermaid
 flowchart LR
@@ -75,9 +92,17 @@ flowchart LR
     DYN --> TWIN["HYDRA-UMC-TWIN Viewport - 計画中"]
 ```
 
----
+</details>
 
-## 3. 🧱 アーキテクチャと設計上の決定
+### 物理パイプライン
+
+`URDF`（パース）と、実際の独立した運動学ステップ（`fk`/
+`validate-limits`。v0 では `SOLVE` の役割を代替するため、下図では
+独立したボックスとして示していません）は今日すでに実際に動作します。
+`MESH`、実際の `SOLVE` ステップ（本物の MuJoCo/PhysX ソルバー）、`DYN`、
+`TWIN` はいずれも今後の課題のままです。
+
+### アーキテクチャと設計上の決定
 
 * **本シミュレーションに `hardware/`/`firmware/`/`os/` フォルダがない理由。** 純粋なソフトウェアであり、独自の基板を持たないため、これらのフォルダは空のまま残すのではなく意図的に省略されています。
 * **HYDRA-UMC-TWIN のサブモジュールではなく兄弟プロジェクトである理由。** 物理ソルバーはレンダリングとは独立した独自のティックレートで動作します——独立したプロセスとして保つことで、遅い物理ステップが HYDRA-UMC-TWIN 自身のフレームレートを停滞させることはなく、どちらか一方を（例えば MuJoCo と PhysX の間で）入れ替え/アップグレードしても、もう一方に影響を与えません。
@@ -87,52 +112,31 @@ flowchart LR
 * **`fk-checked` が `fk` をその場で変更するのではなく新しいサブコマンドである理由。** `fk` は既存の低レベルな純粋数学ユーティリティです——一部の呼び出し元（例えば可動域自体を調整する場合）は、範囲外の値に対する未チェックのポーズを実際に必要とします。`fk-checked` は、`fk` がこれまで意味してきたものを黙って変更することなく、実際の呼び出し元が使うべきフェイルセーフで可動域チェック付きのエントリポイントを追加します。
 * **関節可動域コーパス（`corpus.rs`）がテスト専用である理由。** これは、`limits.rs` と `kinematics.rs` の回帰テストに、重複したその場しのぎのリテラルではなく、単一の実際の共有フィクスチャセットを与えるためだけに存在します——リリースバイナリに含める理由がないため、`#[cfg(test)]` の背後で保護されています。
 
----
+## 🚀 クイックスタート
 
-## 📂 リポジトリ構成
+安定版の Rust ツールチェーン（エディション 2021）と `cargo` が必要です。
 
-純粋なソフトウェアシミュレーションエンジンで独自のハードウェア設計を
-持たず、ソースフォルダは実装に必要な場合だけ含めます。そのため本プロジェクトは
-`hardware/`、`firmware/`、`os/` フォルダを携えていません。
-
-```text
-HYDRA-UMC-PHYSICS-REPLICA/
-├── src/
-│   ├── transform.rs      # 実際の Vec3/Mat4（平行移動、軸角回転、rpy）
-│   ├── urdf.rs           # 実際の、部分的な URDF リーダー（parent/childツリー走査、分岐、mimic、リミット）
-│   ├── kinematics.rs     # 実際の forward_kinematics() + forward_kinematics_checked()
-│   ├── limits.rs         # 実際の validate_limits()
-│   ├── corpus.rs         # テスト専用の可動域フィクスチャコーパス
-│   └── main.rs           # エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド
-├── tests/            # cli_contract.rs と tree_contract.rs: コマンドラインのエラー (綴り違い・重複・欠落した関節) と、枝および mimic 関節の配置
-├── docs/
-│   └── CLI_REFERENCE.md # 完全なコマンドラインリファレンス、すべての終了コードとエラーケース
-├── build/               # ビルドノート/成果物（cargo 自身の出力は target/ にあり、gitignore 対象）
-├── images/              # メディアと図表
-├── tools/
-│   ├── build_test.py    # バージョンを増やさないビルドチェック
-│   ├── ci_validate.py   # CI が使用するマニフェスト/CHANGELOG/ドキュメント検証
-│   ├── _doc_policy.py   # ファミリー共通のドキュメント規則 (HYDRA-UMC-SDK のコピーで、同期を維持)
-│   ├── _readme_parity.py # 8つの README が同じ構造であることの検査 (HYDRA-UMC-SDK のコピーで、同期を維持)
-│   └── hydra_project_tool.py # すべてのリポジトリで共通のコマンド: validate、test、ci、version、status、bump
-├── Cargo.toml           # パッケージメタデータ、依存関係（roxmltree）、オドメーターバージョン
-├── bump_version.py      # オドメーター式バージョンインクリメント（明示的な `bump` コマンドのみが実行）
-├── bump_manifest_version.py # hydra-umc.project.json のバージョンをネイティブ版と同期(--sync)
-├── build.sh / build.bat # バージョンを増加させ、`cargo test`、その後 `cargo build --release` を実行
-├── build-test.sh / build-test.bat # バージョンを増やさないビルドチェック
-└── run.sh / run.bat     # コンパイル済みの release バイナリを実行（引数を転送）
+```bash
+./build.sh  # Linux, macOS (build.bat on Windows)
+./run.sh fk --urdf arm.urdf --joints "shoulder=0,elbow=0"
+./run.sh validate-limits --urdf arm.urdf --joints "shoulder=3.0,elbow=0.2"
+cargo test
 ```
 
----
+## 🧪 テスト
 
-## 🏗️ ビルドと実行
+`cargo test` で自動テスト 86 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
+
+CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
+
+## 🏗️ ビルドとリリース
 
 Rust ツールチェーン（`cargo`/`rustc`、[rustup](https://rustup.rs) 経由で
 インストール）と Python 3.10+（`bump_version.py` のみに使用）が必要です。
 
 ```bash
 # Linux / macOS
-./build.sh   # 、`cargo test`（64 件のテスト）、その後 `cargo build --release`
+./build.sh   # 、`cargo test`（86 件のテスト）、その後 `cargo build --release`
 ./run.sh     # target/release/hydra-umc-physics-replica を実行し、名前 + バージョン + 役割を表示
 ```
 
@@ -179,15 +183,54 @@ run.bat
 
 完全なコマンドラインリファレンス - 実際のリリースバイナリの実行から採取した、あらゆる実際のエラーケース（引数の欠落・不正な形式、読み取れない URDF ファイルなど）を含む - は [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md) を参照してください。
 
----
+## 📂 リポジトリの構成
 
-## 🚀 ロードマップ
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-PHYSICS-REPLICA" width="100%">
+</p>
+
+<details>
+<summary>ツリーのテキスト版</summary>
+
+```text
+HYDRA-UMC-PHYSICS-REPLICA/
+├── src/                             ソースコード
+│   ├── transform.rs                 実際の Vec3/Mat4（平行移動、軸角回転、rpy）
+│   ├── urdf.rs                      実際の、部分的な URDF リーダー（parent/childツリー走査、分岐、mimic、リミット）
+│   ├── kinematics.rs                実際の forward_kinematics() + forward_kinematics_checked()
+│   ├── limits.rs                    実際の validate_limits()
+│   ├── corpus.rs                    テスト専用の可動域フィクスチャコーパス
+│   └── main.rs                      エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド
+├── tests/                           cli_contract.rs と tree_contract.rs: コマンドラインのエラー (綴り違い・重複・欠落した関節) と、枝および mimic 関節の配置
+├── docs/                            プロジェクトの文書
+├── images/                          メディアと図表
+├── tools/                           プロジェクトのツールと CI の検査
+├── .github/                         CI ワークフローと Issue テンプレート
+├── Cargo.toml                       クレートのメタデータ
+├── bump_version.py                  明示的なバージョン更新
+├── bump_manifest_version.py         hydra-umc.project.json のバージョンをネイティブ版と同期(--sync)
+├── build.sh / build.bat             バージョンを増加させ、`cargo test`、その後 `cargo build --release` を実行
+├── build-test.sh / build-test.bat   バージョンを増やさないビルドチェック
+├── run.sh / run.bat                 コンパイル済みの release バイナリを実行（引数を転送）
+├── CHANGELOG.md                     各バージョンの変更点
+├── hydra-umc.project.json           マニフェスト：バージョン、成熟度、ファミリー
+└── test.sh                          テストを実行
+```
+
+</details>
+
+## 🗺️ ロードマップと既知の制限
+
+**現時点の既知の制限**
+
 * **フェーズ 1：** リアルタイムハードウェアテレメトリとのデジタルツイン同期、サブ 10ms の遅延。
 * **フェーズ 2：** 産業グレードのシミュレーター（Isaac Sim）との Physics Replica 統合、変形体サポート。
 * **フェーズ 3：** 分散型フェイルオーバーと早期センサー劣化検知のためのノード自己修復自動化パターン。
 * **フェーズ 4：** 変形体シミュレーション（ケーブルと真空チューブ）のサポートとフォトリアリスティックな合成データ生成。
 
----
+## 🌍 言語
+
+この README とリポジトリの文書は、英語・スペイン語・ドイツ語・フランス語・イタリア語・日本語・中国語・ポルトガル語（ポルトガル）の 8 言語で提供されています。8 つのファイルは同時に書かれ、同じ節と同じリンクを持つことを CI が確認します。 このリポジトリには独自の画面もメッセージカタログもないため、翻訳すべきインターフェース文字列はありません。
 
 ## 🔗 関連プロジェクト
 
@@ -280,21 +323,26 @@ run.bat
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 保守インシデントコーディネーター: 低権限のエッジ役割がサニタイズされたインベントリ/ヘルスのスナップショットを収集し、コントロールプレーン役割がそれを読み取り専用でレンダリングして AI プロバイダーに診断の提案を依頼します - パッチを適用することも、何かをデプロイすることも決してありません。
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 再現可能な開発ホスト（Raspberry Pi 5 / CM5）。エコシステムのソースコードを保管し、永続キューのもとで境界の明確なビルド/テストタスクを実行する。運用中の CM5 とは明確に異なる、開発専用の役割。
 
+## 📚 ドキュメント
 
----
+さらに読むには：
 
-## 📚 ドキュメント & コミュニティ
+* [エコシステムのセキュリティ基準](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [エコシステムの脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [このリポジトリの変更履歴](CHANGELOG.md)
+* [このリポジトリのライセンス](LICENSE.md)
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— プルリクエストのための技術スタックとコーディング指針。
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— このコミュニティで期待される行動規範。
-- **[SECURITY.md](SECURITY.md)** —— 脆弱性の報告方法と、このプロジェクトの実際のセキュリティ重点領域。
-- **[SUPPORT.md](SUPPORT.md)** —— 質問の投稿先とバグの報告先。
-- **[LICENSE.md](LICENSE.md)** —— このプロジェクト自身のライセンス。
+## 🤝 コントリビュートとコミュニティ
+
+* プルリクエストの前に `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py`（または `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`）を実行してください。`CI_VALIDATION=PASS` と表示される必要があります。この確認に `build.sh` や `build.bat` は使わないでください。ビルドは検査ではありません。
+* 8 つの README は HYDRA-UMC-DOCS の 1 つのソースから書かれます。手で編集しないでください。ソースを変更し、`tools/make_readmes.py` で書き直します。
+* 実行していないことを README に書かないでください。事実であれば「シミュレーションのみ」「実機では未確認」と書きます。
+* [CONTRIBUTING.md](CONTRIBUTING.md)、[行動規範](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md)、[SUPPORT.md](SUPPORT.md) を参照してください。
 
 ## 👤 作者
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 ライセンス
-GPL-3.0 —— 詳細は LICENSE を参照してください。
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

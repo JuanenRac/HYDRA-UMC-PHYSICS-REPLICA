@@ -1,23 +1,34 @@
+<!-- =============================================================================
+HYDRA-UMC-PHYSICS-REPLICA - Digital twin module
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
+
 <p align="center">
   <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-PHYSICS-REPLICA banner" width="100%">
 </p>
 
-# 🏗️ HYDRA-UMC-PHYSICS-REPLICA
+# 📐 HYDRA-UMC-PHYSICS-REPLICA
 
 <p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
 
 ### 📐 URDF 正向运动学与关节限位验证
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Licencia-GPL%203.0-blue.svg" alt="GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
-  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Tech">
-  <img src="https://img.shields.io/badge/Stage-%E5%8A%9F%E8%83%BD%E9%98%B6%E6%AE%B5%20v0-yellow.svg" alt="功能阶段 v0">
+  <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
+  <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
+  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.0.9-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
 ---
 
 > **安全与安防现状:**本生态系统不是经认证的安全系统。目前尚无硬件 E-STOP 通路,没有由固件强制执行的限位或联锁,也没有经过验证的运动指令;固件映像使用 CRC32 和共享密钥的 HMAC-SHA256 校验,而非非对称签名;TLS 与双向 TLS 均为可选项,默认关闭;自制电路板尚未组装或测试。在依赖此处任何说法来保障人身安全之前,请先阅读[安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)和[威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)。
+
+---
 
 ## 📋 速览
 
@@ -25,8 +36,11 @@
 |---|---|
 | 版本 | `0.0.9` |
 | 成熟度 | 可用 |
+| 测试 | 86 (`cargo test`) |
 | 技术栈 | Rust / roxmltree / URDF forward kinematics |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
+
+**跳转：** [概述](#-概述) · [架构](#-架构) · [快速开始](#-快速开始) · [测试](#-测试) · [仓库结构](#-仓库结构) · [相关项目](#-相关项目)
 
 ## 🚦 项目状态
 
@@ -37,11 +51,11 @@
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟠 | 此仓库尚未记录测试数量 |
+| 测试 | 🟢 | 86 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
-## 1. 🛠️ 技术概述
+## 🎯 概述
 
 **HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：它读取 URDF 运动学树（串联臂以及夹爪这类分叉结构），计算每个关节的位姿（正向运动学），并对照关节限位检查关节位置。它不模拟动力学：没有刚体、接触或摩擦模型，也没有 MuJoCo 或 PhysX，这些属于路线图。
 
@@ -57,14 +71,18 @@
 
 **诚实说明——今天实际运行的内容：** `fk --urdf 路径 --joints "j1=0.5,..."` 通过串联 URDF 关节变换，计算每个关节真实的世界坐标位置，而不管某个位置是否在其声明的限位之内；`fk-checked` 执行同样的计算，但会先针对每个位置调用 `validate-limits` 的真实限位检查，只要有任何一项超出范围就拒绝计算（或报告）任何位姿；`validate-limits --urdf 路径 --joints "..."` 则单独报告真实的超限关节。三者都是纯运动学——没有刚体动力学，没有接触力，尚未接入任何 MuJoCo/PhysX 求解器，并且 URDF 读取器会遍历真实的 `parent`/`child` 连杆树，包括分支（每个关节都从携带其父连杆的关节开始放置），计算跟随另一个关节的关节（`<mimic>`），并且在需要时还会检查 `<safety_controller>` 的软限位以及速度和力的限位（`validate-limits --soft --velocities ... --efforts ...`）。具体已交付内容请参见 [`CHANGELOG.md`](CHANGELOG.md)，尚待完成的内容请参见下方路线图。
 
----
+## 🧩 在 HYDRA-UMC 中的角色
 
-## 2. 🔄 物理流水线
+**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：读取 URDF 树，计算每个关节的位姿（正向运动学），并对照限位检查关节位置。它不模拟动力学：没有接触、摩擦或刚体模型。
 
-`URDF`（解析）以及一个真实、独立的运动学步骤（`fk`/`validate-limits`，
-由于它在 v0 中承担了 `SOLVE` 的角色，下面没有把它单独画成一个方框）今天
-已是真实的。`MESH`、真正的 `SOLVE` 步骤（一个真实的 MuJoCo/PhysX 求解
-器）、`DYN` 以及 `TWIN` 仍是未来工作。
+## 🏛️ 架构
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-PHYSICS-REPLICA architecture" width="100%">
+</p>
+
+<details>
+<summary>图表的文本版本（Mermaid）</summary>
 
 ```mermaid
 flowchart LR
@@ -74,9 +92,16 @@ flowchart LR
     DYN --> TWIN["HYDRA-UMC-TWIN Viewport - 计划中"]
 ```
 
----
+</details>
 
-## 3. 🧱 架构与设计决策
+### 物理流水线
+
+`URDF`（解析）以及一个真实、独立的运动学步骤（`fk`/`validate-limits`，
+由于它在 v0 中承担了 `SOLVE` 的角色，下面没有把它单独画成一个方框）今天
+已是真实的。`MESH`、真正的 `SOLVE` 步骤（一个真实的 MuJoCo/PhysX 求解
+器）、`DYN` 以及 `TWIN` 仍是未来工作。
+
+### 架构与设计决策
 
 * **为何本仿真模块没有 `hardware/`/`firmware/`/`os/` 文件夹。** 纯软件——没有自己的板卡，因此这些文件夹被直接省略而非留空。
 * **为何它是 HYDRA-UMC-TWIN 的兄弟项目，而非子模块。** 物理求解器以自己的节拍运行，独立于渲染——将其保持为独立进程意味着一次缓慢的物理步进不会拖慢 HYDRA-UMC-TWIN 自身的帧率，并且两者中的任何一个都可以被替换/升级（例如 MuJoCo 与 PhysX 之间切换）而不影响另一个。
@@ -86,51 +111,31 @@ flowchart LR
 * **为何 `fk-checked` 是一个新子命令，而不是就地修改 `fk`。** `fk` 是已有的底层纯数学工具——有些调用方（例如调整限位本身）确实想要针对超限值获得未经检查的位姿。`fk-checked` 增加了那个真正的调用方应该使用的、带限位检查、故障安全的入口点，而不会悄悄改变 `fk` 一直以来的含义。
 * **为何关节限位语料库（`corpus.rs`）仅用于测试。** 它存在的唯一目的，就是给 `limits.rs` 和 `kinematics.rs` 的回归测试提供一份共享的真实 fixture 集合，而不是每个测试模块各自重复的临时字面量——它没有理由被打进 release 二进制文件，因此被置于 `#[cfg(test)]` 之后。
 
----
+## 🚀 快速开始
 
-## 📂 目录结构
+需要稳定版 Rust 工具链（2021 版）及 `cargo`。
 
-纯软件仿真引擎，没有自己的硬件设计；源代码文件夹仅在实现需要时才包含，
-因此本项目不携带 `hardware/`、`firmware/` 或 `os/` 文件夹。
-
-```text
-HYDRA-UMC-PHYSICS-REPLICA/
-├── src/
-│   ├── transform.rs      # 真实的 Vec3/Mat4（平移、轴角旋转、rpy）
-│   ├── urdf.rs           # 真实的、部分支持的 URDF 读取器（parent/child树遍历，分支、mimic 和限位）
-│   ├── kinematics.rs     # 真实的 forward_kinematics() + forward_kinematics_checked()
-│   ├── limits.rs         # 真实的 validate_limits()
-│   ├── corpus.rs         # 仅用于测试的限位 fixture 语料库
-│   └── main.rs           # 入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令
-├── tests/            # cli_contract.rs 和 tree_contract.rs: 命令行错误 (关节拼写错误、重复或缺失) 以及分支与 mimic 关节的放置
-├── docs/
-│   └── CLI_REFERENCE.md # 完整命令行参考，涵盖每个退出码和错误情形
-├── build/               # 构建笔记/产物（cargo 自身的输出位于 target/，已被 gitignore）
-├── images/              # 媒体与图表
-├── tools/
-│   ├── build_test.py    # 不递增版本号的构建检查
-│   ├── ci_validate.py   # CI 使用的清单/CHANGELOG/文档校验
-│   ├── _doc_policy.py   # 家族共享的文档规则 (HYDRA-UMC-SDK 的副本,保持同步)
-│   ├── _readme_parity.py # 检查八个 README 结构一致 (HYDRA-UMC-SDK 的副本,保持同步)
-│   └── hydra_project_tool.py # 每个仓库相同的命令: validate、test、ci、version、status、bump
-├── Cargo.toml           # 包元数据、依赖项（roxmltree）、里程表版本号
-├── bump_version.py      # 里程表式版本递增（仅由显式 `bump` 命令运行）
-├── bump_manifest_version.py # 将 hydra-umc.project.json 的版本与原生版本同步(--sync)
-├── build.sh / build.bat # 验证并构建（构建不会更改版本）
-├── build-test.sh / build-test.bat # 不递增版本号的构建检查
-└── run.sh / run.bat     # 运行编译后的 release 二进制文件（转发参数）
+```bash
+./build.sh  # Linux, macOS (build.bat on Windows)
+./run.sh fk --urdf arm.urdf --joints "shoulder=0,elbow=0"
+./run.sh validate-limits --urdf arm.urdf --joints "shoulder=3.0,elbow=0.2"
+cargo test
 ```
 
----
+## 🧪 测试
 
-## 🏗️ 构建与运行
+运行 `cargo test` 会执行 86 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+
+CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
+
+## 🏗️ 构建与发布
 
 需要 Rust 工具链（`cargo`/`rustc`，通过 [rustup](https://rustup.rs) 安装）
 以及 Python 3.10+（仅供 `bump_version.py` 使用）。
 
 ```bash
 # Linux / macOS
-./build.sh   # 、`cargo test`（64 个测试），然后执行 `cargo build --release`
+./build.sh   # 、`cargo test`（86 个测试），然后执行 `cargo build --release`
 ./run.sh     # 运行 target/release/hydra-umc-physics-replica，打印名称 + 版本 + 角色
 ```
 
@@ -176,15 +181,54 @@ run.bat
 
 完整命令行参考——包含从真实发布二进制文件运行中采集到的每一种真实错误情形（缺失/格式错误的参数、无法读取的 URDF 文件）——见 [`docs/CLI_REFERENCE.md`](docs/CLI_REFERENCE.md)。
 
----
+## 📂 仓库结构
 
-## 🚀 路线图
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-PHYSICS-REPLICA" width="100%">
+</p>
+
+<details>
+<summary>目录树的文本版本</summary>
+
+```text
+HYDRA-UMC-PHYSICS-REPLICA/
+├── src/                             源代码
+│   ├── transform.rs                 真实的 Vec3/Mat4（平移、轴角旋转、rpy）
+│   ├── urdf.rs                      真实的、部分支持的 URDF 读取器（parent/child树遍历，分支、mimic 和限位）
+│   ├── kinematics.rs                真实的 forward_kinematics() + forward_kinematics_checked()
+│   ├── limits.rs                    真实的 validate_limits()
+│   ├── corpus.rs                    仅用于测试的限位 fixture 语料库
+│   └── main.rs                      入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令
+├── tests/                           cli_contract.rs 和 tree_contract.rs: 命令行错误 (关节拼写错误、重复或缺失) 以及分支与 mimic 关节的放置
+├── docs/                            项目文档
+├── images/                          媒体与图表
+├── tools/                           项目工具和 CI 检查
+├── .github/                         CI 工作流和 Issue 模板
+├── Cargo.toml                       crate 元数据
+├── bump_version.py                  显式提升版本
+├── bump_manifest_version.py         将 hydra-umc.project.json 的版本与原生版本同步(--sync)
+├── build.sh / build.bat             验证并构建（构建不会更改版本）
+├── build-test.sh / build-test.bat   不递增版本号的构建检查
+├── run.sh / run.bat                 运行编译后的 release 二进制文件（转发参数）
+├── CHANGELOG.md                     每个版本的变更
+├── hydra-umc.project.json           清单：版本、成熟度、系列
+└── test.sh                          运行测试
+```
+
+</details>
+
+## 🗺️ 路线图与已知限制
+
+**当前已知限制**
+
 * **第一阶段：** 数字孪生与实时硬件遥测的同步，延迟低于 10ms。
 * **第二阶段：** 物理复制品与工业级仿真器（Isaac Sim）的集成，以及可变形体支持。
 * **第三阶段：** 用于去中心化故障转移和早期传感器退化检测的节点自愈自动化恢复模式。
 * **第四阶段：** 支持可变形体仿真（线缆和真空管）以及照片级真实合成数据生成。
 
----
+## 🌍 语言
+
+本 README 和仓库文档提供八种语言：英语、西班牙语、德语、法语、意大利语、日语、中文和葡萄牙语（葡萄牙）。它们同时编写，并由 CI 检查八个文件拥有相同的章节和相同的链接。 本仓库没有自己的界面或消息目录，因此没有需要翻译的界面文字。
 
 ## 🔗 相关项目
 
@@ -277,21 +321,26 @@ run.bat
 - **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 维护事件协调器：一个低权限的边缘角色采集经过脱敏的库存/健康快照，一个控制面角色以只读方式渲染它，并请求某个 AI 提供方给出诊断建议——从不应用补丁，也从不部署任何内容。
 - **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 可复现的开发主机（Raspberry Pi 5 / CM5），保存整个生态系统的源代码，并在持久队列下运行有界的构建/测试任务；这是专用的开发角色，明确区别于运行中的 CM5。
 
+## 📚 文档
 
----
+更多阅读：
 
-## 📚 文档与社区
+* [生态系统的安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [生态系统的威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [本仓库的更新日志](CHANGELOG.md)
+* [本仓库的许可证](LICENSE.md)
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
-- **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。
-- **[SUPPORT.md](SUPPORT.md)** —— 在哪里提问和报告缺陷。
-- **[LICENSE.md](LICENSE.md)** —— 本项目自身的许可证。
+## 🤝 参与贡献与社区
+
+* 提交 pull request 之前，请运行 `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py`（或 `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`）：它必须输出 `CI_VALIDATION=PASS`。此检查不要运行 `build.sh` 或 `build.bat`；构建不是检查。
+* 八个 README 由 HYDRA-UMC-DOCS 中的同一个源生成；请勿手工编辑。修改源文件，再用 `tools/make_readmes.py` 重新生成。
+* 不要在 README 中声称尚未运行过的内容：属实时请写“仅模拟”或“尚未在硬件上试过”。
+* 请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md) 和 [SUPPORT.md](SUPPORT.md)。
 
 ## 👤 作者
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 许可证
-GPL-3.0 —— 详见 LICENSE。
+
+GPL-3.0-or-later - [LICENSE](LICENSE).

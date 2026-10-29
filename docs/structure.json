@@ -1,0 +1,500 @@
+{
+  "repo": "HYDRA-UMC-PHYSICS-REPLICA",
+  "ecosystem": "hydra",
+  "svg": "en",
+  "exempt": [
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "LICENSE",
+    "LICENSE.md",
+    "Cargo.lock",
+    "test.bat"
+  ],
+  "cards": [
+    {
+      "name": "src/",
+      "span": 3,
+      "accent": "a",
+      "rows": [
+        {
+          "name": "transform.rs",
+          "desc": {
+            "en": "Real Vec3/Mat4 math",
+            "es": "Vec3/Mat4 reales",
+            "de": "Echte Vec3/Mat4",
+            "fr": "Vec3/Mat4 réels",
+            "it": "Vec3/Mat4 reali",
+            "ja": "実際の Vec3/Mat4（平行移動",
+            "zh": "真实的 Vec3/Mat4（平移",
+            "pt": "Matemática real de Vec3/Mat4"
+          },
+          "tree_desc": {
+            "en": "Real Vec3/Mat4 math (translation, axis-angle rotation, rpy)",
+            "es": "Vec3/Mat4 reales (traslación, rotación eje-ángulo, rpy)",
+            "de": "Echte Vec3/Mat4 (Translation, Achsen-Winkel-Rotation, rpy)",
+            "fr": "Vec3/Mat4 réels (translation, rotation axe-angle, rpy)",
+            "it": "Vec3/Mat4 reali (traslazione, rotazione asse-angolo, rpy)",
+            "ja": "実際の Vec3/Mat4（平行移動、軸角回転、rpy）",
+            "zh": "真实的 Vec3/Mat4（平移、轴角旋转、rpy）",
+            "pt": "Matemática real de Vec3/Mat4 (translação, rotação eixo-ângulo, rpy)"
+          }
+        },
+        {
+          "name": "urdf.rs",
+          "desc": {
+            "en": "Real, partial URDF reader",
+            "es": "Lector real y parcial de URDF",
+            "de": "Echter, partieller URDF-Reader",
+            "fr": "Lecteur URDF réel et partiel",
+            "it": "Lettore URDF reale e parziale",
+            "ja": "実際の、部分的な URDF リーダー",
+            "zh": "真实的、部分支持的 URDF 读取器",
+            "pt": "Leitor real e parcial de URDF"
+          },
+          "tree_desc": {
+            "en": "Real, partial URDF reader (parent/child tree walk, branches, mimic and the limits)",
+            "es": "Lector real y parcial de URDF (recorrido de árbol parent/child, ramas, mimic y límites)",
+            "de": "Echter, partieller URDF-Reader (parent/child-Baumdurchlauf, Verzweigungen, Mimic und Grenzen)",
+            "fr": "Lecteur URDF réel et partiel (parcours d'arbre parent/child, branches, mimic et limites)",
+            "it": "Lettore URDF reale e parziale (percorso albero parent/child, rami, mimic e limiti)",
+            "ja": "実際の、部分的な URDF リーダー（parent/childツリー走査、分岐、mimic、リミット）",
+            "zh": "真实的、部分支持的 URDF 读取器（parent/child树遍历，分支、mimic 和限位）",
+            "pt": "Leitor real e parcial de URDF (percurso da árvore parent/child, ramos, mimic e limites)"
+          }
+        },
+        {
+          "name": "kinematics.rs",
+          "desc": {
+            "en": "Real forward_kinematics() +",
+            "es": "forward_kinematics() real +",
+            "de": "Echtes forward_kinematics() +",
+            "fr": "forward_kinematics() réel +",
+            "it": "forward_kinematics() reale +",
+            "ja": "実際の forward_kinematics",
+            "zh": "真实的 forward_kinematics",
+            "pt": "forward_kinematics() +"
+          },
+          "tree_desc": {
+            "en": "Real forward_kinematics() + forward_kinematics_checked()",
+            "es": "forward_kinematics() real + forward_kinematics_checked()",
+            "de": "Echtes forward_kinematics() + forward_kinematics_checked()",
+            "fr": "forward_kinematics() réel + forward_kinematics_checked()",
+            "it": "forward_kinematics() reale + forward_kinematics_checked()",
+            "ja": "実際の forward_kinematics() + forward_kinematics_checked()",
+            "zh": "真实的 forward_kinematics() + forward_kinematics_checked()",
+            "pt": "forward_kinematics() + forward_kinematics_checked() reais"
+          }
+        },
+        {
+          "name": "limits.rs",
+          "desc": {
+            "en": "Real validate_limits()",
+            "es": "validate_limits() real",
+            "de": "Echtes validate_limits()",
+            "fr": "validate_limits() réel",
+            "it": "validate_limits() reale",
+            "ja": "実際の validate_limits()",
+            "zh": "真实的 validate_limits()",
+            "pt": "validate_limits() real"
+          },
+          "tree_desc": {
+            "en": "Real validate_limits()",
+            "es": "validate_limits() real",
+            "de": "Echtes validate_limits()",
+            "fr": "validate_limits() réel",
+            "it": "validate_limits() reale",
+            "ja": "実際の validate_limits()",
+            "zh": "真实的 validate_limits()",
+            "pt": "validate_limits() real"
+          }
+        },
+        {
+          "name": "corpus.rs",
+          "desc": {
+            "en": "Test-only reusable joint-limit fixture",
+            "es": "Corpus de fixtures de limites",
+            "de": "Fixture-Korpus für Gelenkgrenzen",
+            "fr": "Corpus de fixtures de limites",
+            "it": "Corpus di fixture di limiti, solo per i test",
+            "ja": "テスト専用の可動域フィクスチャコーパス",
+            "zh": "仅用于测试的限位 fixture 语料库",
+            "pt": "Só para testes"
+          },
+          "tree_desc": {
+            "en": "Test-only reusable joint-limit fixture corpus",
+            "es": "Corpus de fixtures de limites, solo para tests",
+            "de": "Fixture-Korpus für Gelenkgrenzen, nur für Tests",
+            "fr": "Corpus de fixtures de limites, réservé aux tests",
+            "it": "Corpus di fixture di limiti, solo per i test",
+            "ja": "テスト専用の可動域フィクスチャコーパス",
+            "zh": "仅用于测试的限位 fixture 语料库",
+            "pt": "Só para testes: corpus reutilizável de fixtures de limites de juntas"
+          }
+        },
+        {
+          "name": "main.rs",
+          "desc": {
+            "en": "Entry point + real",
+            "es": "Entry point + subcomandos reales",
+            "de": "Einstiegspunkt + echte",
+            "fr": "Point d'entrée + sous-commandes réelles",
+            "it": "Entry point + sottocomandi reali",
+            "ja": "エントリポイント + 実際の `fk`/`f",
+            "zh": "入口点 + 真实的 `fk`/`fk-che",
+            "pt": "Ponto de entrada + subcomandos reais"
+          },
+          "tree_desc": {
+            "en": "Entry point + real `fk`/`fk-checked`/`validate-limits` subcommands",
+            "es": "Entry point + subcomandos reales `fk`/`fk-checked`/`validate-limits`",
+            "de": "Einstiegspunkt + echte `fk`/`fk-checked`/`validate-limits`-Subbefehle",
+            "fr": "Point d'entrée + sous-commandes réelles `fk`/`fk-checked`/`validate-limits`",
+            "it": "Entry point + sottocomandi reali `fk`/`fk-checked`/`validate-limits`",
+            "ja": "エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド",
+            "zh": "入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令",
+            "pt": "Ponto de entrada + subcomandos reais `fk`/`fk-checked`/`validate-limits`"
+          }
+        }
+      ],
+      "tree_head": {
+        "en": "source code",
+        "es": "código fuente",
+        "de": "Quellcode",
+        "fr": "code source",
+        "it": "codice sorgente",
+        "ja": "ソースコード",
+        "zh": "源代码",
+        "pt": "código-fonte"
+      },
+      "sub": {
+        "en": "source code",
+        "es": "código fuente",
+        "de": "Quellcode",
+        "fr": "code source",
+        "it": "codice sorgente",
+        "ja": "ソースコード",
+        "zh": "源代码",
+        "pt": "código-fonte"
+      }
+    },
+    {
+      "name": {
+        "en": "folders",
+        "es": "carpetas",
+        "de": "Ordner",
+        "fr": "dossiers",
+        "it": "cartelle",
+        "ja": "フォルダ",
+        "zh": "文件夹",
+        "pt": "pastas"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "b",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "tests/",
+          "desc": {
+            "en": "cli_contract.rs and tree_contract.rs",
+            "es": "cli_contract.rs y tree_contract.rs",
+            "de": "cli_contract.rs und tree_contract.rs",
+            "fr": "cli_contract.rs et tree_contract.rs",
+            "it": "cli_contract.rs e tree_contract.rs",
+            "ja": "cli_contract.rs と tree",
+            "zh": "cli_contract.rs 和 tree",
+            "pt": "cli_contract.rs e tree_contract.rs"
+          },
+          "tree_desc": {
+            "en": "cli_contract.rs and tree_contract.rs: the command-line errors (misspelt, repeated or missing joints) and the placement of branches and mimic joints",
+            "es": "cli_contract.rs y tree_contract.rs: los errores de la línea de órdenes (articulaciones mal escritas, repetidas o ausentes) y la colocación de ramas y articulaciones mimic",
+            "de": "cli_contract.rs und tree_contract.rs: die Kommandozeilenfehler (falsch geschriebene, doppelte oder fehlende Gelenke) und die Platzierung von Zweigen und Mimic-Gelenken",
+            "fr": "cli_contract.rs et tree_contract.rs : les erreurs de la ligne de commande (articulations mal orthographiées, répétées ou manquantes) et le placement des branches et des articulations mimic",
+            "it": "cli_contract.rs e tree_contract.rs: gli errori della riga di comando (giunti scritti male, ripetuti o mancanti) e il posizionamento di rami e giunti mimic",
+            "ja": "cli_contract.rs と tree_contract.rs: コマンドラインのエラー (綴り違い・重複・欠落した関節) と、枝および mimic 関節の配置",
+            "zh": "cli_contract.rs 和 tree_contract.rs: 命令行错误 (关节拼写错误、重复或缺失) 以及分支与 mimic 关节的放置",
+            "pt": "cli_contract.rs e tree_contract.rs: os erros da linha de comandos (articulações mal escritas, repetidas ou em falta) e a colocação de ramos e articulações mimic"
+          }
+        },
+        {
+          "name": "docs/",
+          "desc": {
+            "en": "documents of the project",
+            "es": "documentos del proyecto",
+            "de": "Dokumente des Projekts",
+            "fr": "documents du projet",
+            "it": "documenti del progetto",
+            "ja": "プロジェクトの文書",
+            "zh": "项目文档",
+            "pt": "documentos do projeto"
+          },
+          "tree_desc": {
+            "en": "documents of the project",
+            "es": "documentos del proyecto",
+            "de": "Dokumente des Projekts",
+            "fr": "documents du projet",
+            "it": "documenti del progetto",
+            "ja": "プロジェクトの文書",
+            "zh": "项目文档",
+            "pt": "documentos do projeto"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "Media and diagrams",
+            "es": "Medios y diagramas",
+            "de": "Medien und Diagramme",
+            "fr": "Médias et diagrammes",
+            "it": "Media e diagrammi",
+            "ja": "メディアと図表",
+            "zh": "媒体与图表",
+            "pt": "Multimédia e diagramas"
+          },
+          "tree_desc": {
+            "en": "Media and diagrams",
+            "es": "Medios y diagramas",
+            "de": "Medien und Diagramme",
+            "fr": "Médias et diagrammes",
+            "it": "Media e diagrammi",
+            "ja": "メディアと図表",
+            "zh": "媒体与图表",
+            "pt": "Multimédia e diagramas"
+          }
+        },
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "project tools and CI checks",
+            "es": "herramientas del proyecto y comprobaciones",
+            "de": "Projektwerkzeuge und CI-Prüfungen",
+            "fr": "outils du projet et vérifications de la CI",
+            "it": "strumenti del progetto e controlli della CI",
+            "ja": "プロジェクトのツールと CI の検査",
+            "zh": "项目工具和 CI 检查",
+            "pt": "ferramentas do projeto e verificações da CI"
+          },
+          "tree_desc": {
+            "en": "project tools and CI checks",
+            "es": "herramientas del proyecto y comprobaciones del CI",
+            "de": "Projektwerkzeuge und CI-Prüfungen",
+            "fr": "outils du projet et vérifications de la CI",
+            "it": "strumenti del progetto e controlli della CI",
+            "ja": "プロジェクトのツールと CI の検査",
+            "zh": "项目工具和 CI 检查",
+            "pt": "ferramentas do projeto e verificações da CI"
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI workflow and issue templates",
+            "es": "flujo de CI y plantillas de incidencias",
+            "de": "CI-Workflow und Issue-Vorlagen",
+            "fr": "workflow de CI et modèles de tickets",
+            "it": "workflow di CI e modelli di segnalazione",
+            "ja": "CI ワークフローと Issue テンプレート",
+            "zh": "CI 工作流和 Issue 模板",
+            "pt": "fluxo de CI e modelos de problemas"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "project files",
+        "es": "ficheros del proyecto",
+        "de": "Projektdateien",
+        "fr": "fichiers du projet",
+        "it": "file del progetto",
+        "ja": "プロジェクトのファイル",
+        "zh": "项目文件",
+        "pt": "ficheiros do projeto"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "c",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "Cargo.toml",
+          "desc": {
+            "en": "crate metadata",
+            "es": "Metadatos del paquete, dependencias",
+            "de": "Crate-Metadaten",
+            "fr": "Métadonnées du paquet, dépendances",
+            "it": "Metadati del pacchetto, dipendenze",
+            "ja": "クレートのメタデータ",
+            "zh": "crate 元数据",
+            "pt": "metadados do crate"
+          },
+          "tree_desc": {
+            "en": "crate metadata",
+            "es": "Metadatos del paquete, dependencias (roxmltree), version cuentakilometros",
+            "de": "Crate-Metadaten",
+            "fr": "Métadonnées du paquet, dépendances (roxmltree), version compteur kilométrique",
+            "it": "Metadati del pacchetto, dipendenze (roxmltree), version contachilometri",
+            "ja": "クレートのメタデータ",
+            "zh": "crate 元数据",
+            "pt": "metadados do crate"
+          }
+        },
+        {
+          "name": "bump_version.py",
+          "desc": {
+            "en": "explicit version bump",
+            "es": "Incremento de versión tipo cuentakilómetros",
+            "de": "ausdrückliche Versionserhöhung",
+            "fr": "Incrément de version type compteur",
+            "it": "Incremento di versione stile contachilometri",
+            "ja": "明示的なバージョン更新",
+            "zh": "显式提升版本",
+            "pt": "Subida de versão ao estilo conta-quilómetros"
+          },
+          "tree_desc": {
+            "en": "explicit version bump",
+            "es": "Incremento de versión tipo cuentakilómetros (solo lo ejecuta el comando `bump` explícito)",
+            "de": "ausdrückliche Versionserhöhung",
+            "fr": "Incrément de version type compteur kilométrique (exécuté seulement par la commande `bump` explicite)",
+            "it": "Incremento di versione stile contachilometri (eseguito solo dal comando `bump` esplicito)",
+            "ja": "明示的なバージョン更新",
+            "zh": "显式提升版本",
+            "pt": "Subida de versão ao estilo conta-quilómetros (executada só pelo comando `bump` explícito)"
+          }
+        },
+        {
+          "name": "bump_manifest_version.py",
+          "desc": {
+            "en": "Syncs hydra-umc.project.json's version to",
+            "es": "Sincroniza la versión de",
+            "de": "Synchronisiert die Version von",
+            "fr": "Synchronise la version de",
+            "it": "Sincronizza la versione di",
+            "ja": "hydra-umc.project.json",
+            "zh": "将 hydra-umc.project.js",
+            "pt": "Sincroniza a versão do"
+          },
+          "tree_desc": {
+            "en": "Syncs hydra-umc.project.json's version to the native one (--sync)",
+            "es": "Sincroniza la versión de hydra-umc.project.json con la nativa (--sync)",
+            "de": "Synchronisiert die Version von hydra-umc.project.json mit der nativen (--sync)",
+            "fr": "Synchronise la version de hydra-umc.project.json avec la version native (--sync)",
+            "it": "Sincronizza la versione di hydra-umc.project.json con quella nativa (--sync)",
+            "ja": "hydra-umc.project.json のバージョンをネイティブ版と同期(--sync)",
+            "zh": "将 hydra-umc.project.json 的版本与原生版本同步(--sync)",
+            "pt": "Sincroniza a versão do hydra-umc.project.json com a nativa (--sync)"
+          }
+        },
+        {
+          "name": "build.sh / build.bat",
+          "desc": {
+            "en": "Validate and build",
+            "es": "Valida y compila",
+            "de": "Validiert und baut",
+            "fr": "Valide et compile",
+            "it": "Valida e compila",
+            "ja": "バージョンを増加させ、`cargo test",
+            "zh": "验证并构建（构建不会更改版本）",
+            "pt": "Valida e compila"
+          },
+          "tree_desc": {
+            "en": "Validate and build (building never changes the version)",
+            "es": "Valida y compila (compilar nunca cambia la versión)",
+            "de": "Validiert und baut (Bauen ändert nie die Version)",
+            "fr": "Valide et compile (compiler ne change jamais la version)",
+            "it": "Valida e compila (compilare non cambia mai la versione)",
+            "ja": "バージョンを増加させ、`cargo test`、その後 `cargo build --release` を実行",
+            "zh": "验证并构建（构建不会更改版本）",
+            "pt": "Valida e compila (compilar nunca altera a versão)"
+          }
+        },
+        {
+          "name": "build-test.sh / build-test.bat",
+          "desc": {
+            "en": "Non-versioning build check",
+            "es": "Comprobación de compilación sin versionado",
+            "de": "Nicht-versionierender Build-Check",
+            "fr": "Vérification de build sans versionnage",
+            "it": "Controllo build senza versionamento",
+            "ja": "バージョンを増やさないビルドチェック",
+            "zh": "不递增版本号的构建检查",
+            "pt": "Verificação de compilação sem subir versão"
+          },
+          "tree_desc": {
+            "en": "Non-versioning build check (no CHANGELOG/version bump)",
+            "es": "Comprobación de compilación sin versionado",
+            "de": "Nicht-versionierender Build-Check",
+            "fr": "Vérification de build sans versionnage",
+            "it": "Controllo build senza versionamento",
+            "ja": "バージョンを増やさないビルドチェック",
+            "zh": "不递增版本号的构建检查",
+            "pt": "Verificação de compilação sem subir versão (sem CHANGELOG/versão)"
+          }
+        },
+        {
+          "name": "run.sh / run.bat",
+          "desc": {
+            "en": "Runs the compiled release binary",
+            "es": "Ejecuta el binario release compilado",
+            "de": "Führt die kompilierte Release-Binärdatei aus",
+            "fr": "Exécute le binaire release compilé",
+            "it": "Esegue il binario release compilato",
+            "ja": "コンパイル済みの release バイナリを",
+            "zh": "运行编译后的 release 二进制文件",
+            "pt": "Executa o binário de lançamento compilado"
+          },
+          "tree_desc": {
+            "en": "Runs the compiled release binary (forwards arguments)",
+            "es": "Ejecuta el binario release compilado (reenvía argumentos)",
+            "de": "Führt die kompilierte Release-Binärdatei aus (leitet Argumente weiter)",
+            "fr": "Exécute le binaire release compilé (relaie les arguments)",
+            "it": "Esegue il binario release compilato (inoltra gli argomenti)",
+            "ja": "コンパイル済みの release バイナリを実行（引数を転送）",
+            "zh": "运行编译后的 release 二进制文件（转发参数）",
+            "pt": "Executa o binário de lançamento compilado (reencaminha os argumentos)"
+          }
+        },
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé à chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变更",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "hydra-umc.project.json",
+          "desc": {
+            "en": "manifest: version, maturity, family",
+            "es": "manifiesto: versión, madurez, familia",
+            "de": "Manifest: Version, Reifegrad, Familie",
+            "fr": "manifeste : version, maturité, famille",
+            "it": "manifesto: versione, maturità, famiglia",
+            "ja": "マニフェスト：バージョン、成熟度、ファミリー",
+            "zh": "清单：版本、成熟度、系列",
+            "pt": "manifesto: versão, maturidade, família"
+          }
+        },
+        {
+          "name": "test.sh",
+          "desc": {
+            "en": "runs the tests",
+            "es": "ejecuta las pruebas",
+            "de": "führt die Tests aus",
+            "fr": "lance les tests",
+            "it": "esegue i test",
+            "ja": "テストを実行",
+            "zh": "运行测试",
+            "pt": "executa os testes"
+          }
+        }
+      ]
+    }
+  ]
+}

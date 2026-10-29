@@ -1,0 +1,115 @@
+{
+  "repo": "HYDRA-UMC-PHYSICS-REPLICA",
+  "ecosystem": "hydra",
+  "tagline": "Parse a URDF tree, place every joint, and refuse positions outside the limits.",
+  "description": "HYDRA-UMC-PHYSICS-REPLICA parses a URDF subset into a kinematic tree, computes forward kinematics with homogeneous transforms and validates joint positions against limits.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT READS"
+  ],
+  "nodes": [
+    {
+      "id": "twin",
+      "column": 0,
+      "level": "external",
+      "title": "TWIN and scripts",
+      "lines": [
+        "call fk and validate-limits",
+        "and read the output"
+      ]
+    },
+    {
+      "id": "file",
+      "column": 2,
+      "level": "config",
+      "title": "URDF file",
+      "lines": [
+        "metres and radians;",
+        "serial and branching"
+      ]
+    },
+    {
+      "id": "main",
+      "column": 1,
+      "level": "tested",
+      "title": "main.rs",
+      "lines": [
+        "subcommands fk and",
+        "validate-limits"
+      ],
+      "code": [
+        "src/main.rs"
+      ]
+    },
+    {
+      "id": "urdf",
+      "column": 1,
+      "level": "tested",
+      "title": "urdf.rs",
+      "lines": [
+        "URDF subset; clear errors",
+        "for broken trees"
+      ],
+      "code": [
+        "src/urdf.rs"
+      ]
+    },
+    {
+      "id": "lim",
+      "column": 1,
+      "level": "tested",
+      "title": "limits.rs",
+      "lines": [
+        "joint-limit check; a",
+        "violation refuses"
+      ],
+      "code": [
+        "src/limits.rs"
+      ]
+    },
+    {
+      "id": "kin",
+      "column": 1,
+      "level": "tested",
+      "title": "kinematics.rs",
+      "lines": [
+        "forward kinematics over",
+        "the joint tree"
+      ],
+      "code": [
+        "src/kinematics.rs",
+        "src/transform.rs"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "twin",
+      "to": "main",
+      "level": "tested"
+    },
+    {
+      "from": "main",
+      "to": "urdf",
+      "level": "tested"
+    },
+    {
+      "from": "urdf",
+      "to": "kin",
+      "level": "tested"
+    },
+    {
+      "from": "kin",
+      "to": "lim",
+      "level": "tested"
+    },
+    {
+      "from": "urdf",
+      "to": "file",
+      "level": "config",
+      "label": "reads"
+    }
+  ],
+  "footer": "Kinematics only; there is no dynamics model."
+}
