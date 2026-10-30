@@ -207,7 +207,10 @@ fn dh_tool(arm: &Arm, q: &[f64]) -> (f64, f64, f64) {
 fn urdf_file(arm: &Arm) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("physics-replica-arms-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join(format!("{}.urdf", arm.name));
+    // One file per call: the tests run in parallel and a shared file would be rewritten while another test reads it.
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let path = dir.join(format!("{}-{}.urdf", arm.name, n));
     std::fs::write(&path, urdf(arm)).unwrap();
     path
 }
