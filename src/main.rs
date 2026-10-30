@@ -17,6 +17,7 @@
 
 #[cfg(test)]
 mod corpus;
+mod jacobian;
 mod kinematics;
 mod limits;
 mod transform;
@@ -426,6 +427,164 @@ fn run_validate_limits(args: &[String]) -> ExitCode {
     }
 }
 
+fn run_jacobian(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        eprintln!("jacobian: missing required --urdf PATH");
+        return ExitCode::from(2);
+    };
+    let Some(target) = find_flag(args, "--target") else {
+        eprintln!("jacobian: missing required --target JOINT");
+        return ExitCode::from(2);
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("jacobian: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let positions = match parse_joint_positions(&find_flag(args, "--joints").unwrap_or_default()) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("jacobian: invalid --joints value: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    if let Err(e) = check_joint_names(&model.chain, &positions) {
+        eprintln!("jacobian: {e}");
+        return ExitCode::from(2);
+    }
+    match jacobian::jacobian(&model, &positions, &target) {
+        Ok(j) => {
+            eprintln!("{ESTIMATE_NOTICE}");
+            if has_flag(args, "--json") {
+                let rows: Vec<String> = j
+                    .rows
+                    .iter()
+                    .map(|row| {
+                        let cells: Vec<String> = row.iter().map(|v| format!("{v:.9}")).collect();
+                        format!("[{}]", cells.join(","))
+                    })
+                    .collect();
+                let names: Vec<String> = j
+                    .joints
+                    .iter()
+                    .map(|n| format!("\"{}\"", json_escape(n)))
+                    .collect();
+                println!(
+                    "{{\"target\":\"{}\",\"joints\":[{}],\"rows\":[{}]}}",
+                    json_escape(&target),
+                    names.join(","),
+                    rows.join(",")
+                );
+            } else {
+                println!("columns: {}", j.joints.join(" "));
+                for (label, row) in ["vx", "vy", "vz", "wx", "wy", "wz"].iter().zip(&j.rows) {
+                    let cells: Vec<String> = row.iter().map(|v| format!("{v:.6}")).collect();
+                    println!("{label}: {}", cells.join(" "));
+                }
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("jacobian: {e}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn run_ik(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        eprintln!("ik: missing required --urdf PATH");
+        return ExitCode::from(2);
+    };
+    let Some(target) = find_flag(args, "--target") else {
+        eprintln!("ik: missing required --target JOINT");
+        return ExitCode::from(2);
+    };
+    let Some(goal_text) = find_flag(args, "--goal") else {
+        eprintln!("ik: missing required --goal X,Y,Z (metres, world frame)");
+        return ExitCode::from(2);
+    };
+    let goal: Vec<f64> = goal_text
+        .split(',')
+        .filter_map(|v| v.trim().parse::<f64>().ok())
+        .filter(|v| v.is_finite())
+        .collect();
+    if goal.len() != 3 || goal_text.split(',').count() != 3 {
+        eprintln!("ik: --goal wants three finite numbers: X,Y,Z");
+        return ExitCode::from(2);
+    }
+    let mut options = jacobian::IkOptions::default();
+    for (flag, slot) in [
+        ("--tolerance", &mut options.tolerance),
+        ("--damping", &mut options.damping),
+        ("--max-step", &mut options.max_step),
+    ] {
+        if let Some(text) = find_flag(args, flag) {
+            match text.parse::<f64>() {
+                Ok(v) if v.is_finite() && v > 0.0 => *slot = v,
+                _ => {
+                    eprintln!("ik: {flag} wants a positive number");
+                    return ExitCode::from(2);
+                }
+            }
+        }
+    }
+    if let Some(text) = find_flag(args, "--max-iterations") {
+        match text.parse::<usize>() {
+            Ok(v) if v > 0 => options.max_iterations = v,
+            _ => {
+                eprintln!("ik: --max-iterations wants a positive whole number");
+                return ExitCode::from(2);
+            }
+        }
+    }
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("ik: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let initial = match parse_joint_positions(&find_flag(args, "--joints").unwrap_or_default()) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("ik: invalid --joints value: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    if let Err(e) = check_joint_names(&model.chain, &initial) {
+        eprintln!("ik: {e}");
+        return ExitCode::from(2);
+    }
+    match jacobian::ik_position(
+        &model,
+        &initial,
+        &target,
+        [goal[0], goal[1], goal[2]],
+        options,
+    ) {
+        Ok(solution) => {
+            eprintln!("{ESTIMATE_NOTICE}");
+            let mut names: Vec<&String> = solution.positions.keys().collect();
+            names.sort();
+            for name in names {
+                println!("{name}={:.9}", solution.positions[name]);
+            }
+            eprintln!(
+                "ik: reached within {:.6} m in {} iteration(s)",
+                solution.residual, solution.iterations
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("ik: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -433,6 +592,8 @@ fn main() -> ExitCode {
         Some("fk") => run_fk(&args[1..]),
         Some("fk-checked") => run_fk_checked(&args[1..]),
         Some("validate-limits") => run_validate_limits(&args[1..]),
+        Some("jacobian") => run_jacobian(&args[1..]),
+        Some("ik") => run_ik(&args[1..]),
         _ => {
             println!("{PROJECT_NAME} v{VERSION}");
             println!("{ROLE}");
