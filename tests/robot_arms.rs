@@ -85,7 +85,10 @@ fn panda() -> Arm {
 // --- the URDF, generated from the DH rows ------------------------------------------------------------------------------------
 
 fn origin(xyz: (f64, f64, f64), roll: f64) -> String {
-    format!(r#"<origin xyz="{:.10} {:.10} {:.10}" rpy="{:.10} 0 0"/>"#, xyz.0, xyz.1, xyz.2, roll)
+    format!(
+        r#"<origin xyz="{:.10} {:.10} {:.10}" rpy="{:.10} 0 0"/>"#,
+        xyz.0, xyz.1, xyz.2, roll
+    )
 }
 
 /// The fixed transform that a DH row contributes, as a URDF origin.
@@ -94,7 +97,10 @@ fn fixed_part(convention: Convention, row: Dh) -> String {
         // standard: Rz(theta) Tz(d) Tx(a) Rx(alpha) - the part after the rotation is translate(a, 0, d) then Rx(alpha)
         Convention::Standard => origin((row.a, 0.0, row.d), row.alpha),
         // modified: Rx(alpha) Tx(a) Rz(theta) Tz(d) - translate(a, -d sin(alpha), d cos(alpha)) then Rx(alpha), before the rotation
-        Convention::Modified => origin((row.a, -row.d * row.alpha.sin(), row.d * row.alpha.cos()), row.alpha),
+        Convention::Modified => origin(
+            (row.a, -row.d * row.alpha.sin(), row.d * row.alpha.cos()),
+            row.alpha,
+        ),
     }
 }
 
@@ -120,7 +126,9 @@ fn urdf(arm: &Arm) -> String {
         Convention::Standard => fixed_part(arm.convention, arm.dh[n - 1]),
         Convention::Modified => fixed_part(arm.convention, arm.tool),
     };
-    xml += &format!(r#"<joint name="tool0" type="fixed"><parent link="link{n}"/><child link="tool"/>{at}</joint>"#);
+    xml += &format!(
+        r#"<joint name="tool0" type="fixed"><parent link="link{n}"/><child link="tool"/>{at}</joint>"#
+    );
     xml + "</robot>"
 }
 
@@ -139,13 +147,28 @@ fn mul(a: &M, b: &M) -> M {
 }
 
 fn rot_z(t: f64) -> M {
-    [[t.cos(), -t.sin(), 0.0, 0.0], [t.sin(), t.cos(), 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    [
+        [t.cos(), -t.sin(), 0.0, 0.0],
+        [t.sin(), t.cos(), 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 }
 fn rot_x(t: f64) -> M {
-    [[1.0, 0.0, 0.0, 0.0], [0.0, t.cos(), -t.sin(), 0.0], [0.0, t.sin(), t.cos(), 0.0], [0.0, 0.0, 0.0, 1.0]]
+    [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, t.cos(), -t.sin(), 0.0],
+        [0.0, t.sin(), t.cos(), 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 }
 fn trans(x: f64, y: f64, z: f64) -> M {
-    [[1.0, 0.0, 0.0, x], [0.0, 1.0, 0.0, y], [0.0, 0.0, 1.0, z], [0.0, 0.0, 0.0, 1.0]]
+    [
+        [1.0, 0.0, 0.0, x],
+        [0.0, 1.0, 0.0, y],
+        [0.0, 0.0, 1.0, z],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 }
 
 fn dh_tool(arm: &Arm, q: &[f64]) -> (f64, f64, f64) {
@@ -153,13 +176,28 @@ fn dh_tool(arm: &Arm, q: &[f64]) -> (f64, f64, f64) {
     t[0][0] = 1.0;
     for (row, angle) in arm.dh.iter().zip(q) {
         let step = match arm.convention {
-            Convention::Standard => mul(&mul(&mul(&rot_z(*angle), &trans(0.0, 0.0, row.d)), &trans(row.a, 0.0, 0.0)), &rot_x(row.alpha)),
-            Convention::Modified => mul(&mul(&mul(&rot_x(row.alpha), &trans(row.a, 0.0, 0.0)), &rot_z(*angle)), &trans(0.0, 0.0, row.d)),
+            Convention::Standard => mul(
+                &mul(
+                    &mul(&rot_z(*angle), &trans(0.0, 0.0, row.d)),
+                    &trans(row.a, 0.0, 0.0),
+                ),
+                &rot_x(row.alpha),
+            ),
+            Convention::Modified => mul(
+                &mul(
+                    &mul(&rot_x(row.alpha), &trans(row.a, 0.0, 0.0)),
+                    &rot_z(*angle),
+                ),
+                &trans(0.0, 0.0, row.d),
+            ),
         };
         t = mul(&t, &step);
     }
     if arm.convention == Convention::Modified {
-        t = mul(&mul(&t, &rot_x(arm.tool.alpha)), &trans(arm.tool.a, 0.0, arm.tool.d));
+        t = mul(
+            &mul(&t, &rot_x(arm.tool.alpha)),
+            &trans(arm.tool.a, 0.0, arm.tool.d),
+        );
     }
     (t[0][3], t[1][3], t[2][3])
 }
@@ -175,9 +213,19 @@ fn urdf_file(arm: &Arm) -> PathBuf {
 }
 
 fn run(arm: &Arm, command: &str, q: &[f64]) -> (Option<i32>, String, String) {
-    let joints: Vec<String> = q.iter().enumerate().map(|(i, v)| format!("j{}={:.12}", i + 1, v)).collect();
+    let joints: Vec<String> = q
+        .iter()
+        .enumerate()
+        .map(|(i, v)| format!("j{}={:.12}", i + 1, v))
+        .collect();
     let output = Command::new(env!("CARGO_BIN_EXE_hydra-umc-physics-replica"))
-        .args([command, "--urdf", &urdf_file(arm).to_string_lossy(), "--joints", &joints.join(",")])
+        .args([
+            command,
+            "--urdf",
+            &urdf_file(arm).to_string_lossy(),
+            "--joints",
+            &joints.join(","),
+        ])
         .output()
         .unwrap();
     (
@@ -188,16 +236,26 @@ fn run(arm: &Arm, command: &str, q: &[f64]) -> (Option<i32>, String, String) {
 }
 
 fn tool_position(stdout: &str) -> (f64, f64, f64) {
-    let line = stdout.lines().find(|l| l.starts_with("tool0:")).unwrap_or_else(|| panic!("no tool0 line in {stdout}"));
+    let line = stdout
+        .lines()
+        .find(|l| l.starts_with("tool0:"))
+        .unwrap_or_else(|| panic!("no tool0 line in {stdout}"));
     let number = |key: &str| -> f64 {
         let start = line.find(key).unwrap() + key.len();
-        line[start..].split_whitespace().next().unwrap().parse().unwrap()
+        line[start..]
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap()
     };
     (number("x="), number("y="), number("z="))
 }
 
 fn close(a: (f64, f64, f64), b: (f64, f64, f64), tolerance: f64) -> bool {
-    (a.0 - b.0).abs() <= tolerance && (a.1 - b.1).abs() <= tolerance && (a.2 - b.2).abs() <= tolerance
+    (a.0 - b.0).abs() <= tolerance
+        && (a.1 - b.1).abs() <= tolerance
+        && (a.2 - b.2).abs() <= tolerance
 }
 
 /// A few poses per arm that are not special: each joint at a different fraction of its range.
@@ -212,7 +270,11 @@ fn poses(arm: &Arm) -> Vec<Vec<f64>> {
                 .map(|(j, (lower, upper))| {
                     let f = (fraction + 0.11 * ((j + k) % 3) as f64).min(0.95);
                     // keep UR5e's full-turn range to a quarter of itself, which is plenty and keeps the numbers readable
-                    let (lower, upper) = if *upper - *lower > 7.0 { (-PI, PI) } else { (*lower, *upper) };
+                    let (lower, upper) = if *upper - *lower > 7.0 {
+                        (-PI, PI)
+                    } else {
+                        (*lower, *upper)
+                    };
                     lower + f * (upper - lower)
                 })
                 .collect()
@@ -248,7 +310,11 @@ fn the_urdf_made_from_dh_gives_the_tool_that_the_dh_chain_gives() {
             assert_eq!(code, Some(0), "{}: {stderr}", arm.name);
             let from_urdf = tool_position(&stdout);
             let from_dh = dh_tool(&arm, &q);
-            assert!(close(from_urdf, from_dh, 1e-5), "{} at {q:?}: urdf {from_urdf:?}, dh {from_dh:?}", arm.name);
+            assert!(
+                close(from_urdf, from_dh, 1e-5),
+                "{} at {q:?}: urdf {from_urdf:?}, dh {from_dh:?}",
+                arm.name
+            );
         }
     }
 }
@@ -256,11 +322,21 @@ fn the_urdf_made_from_dh_gives_the_tool_that_the_dh_chain_gives() {
 #[test]
 fn the_reach_of_the_arm_never_exceeds_the_sum_of_its_links() {
     // a property that holds for any pose of any serial arm: the tool cannot be farther from the base than the links are long
-    for (arm, reach) in [(ur5e(), 0.1625 + 0.425 + 0.3922 + 0.1333 + 0.0997 + 0.0996), (panda(), 0.333 + 0.316 + 0.384 + 0.107 + 0.0825 * 2.0 + 0.088)] {
+    for (arm, reach) in [
+        (ur5e(), 0.1625 + 0.425 + 0.3922 + 0.1333 + 0.0997 + 0.0996),
+        (
+            panda(),
+            0.333 + 0.316 + 0.384 + 0.107 + 0.0825 * 2.0 + 0.088,
+        ),
+    ] {
         for q in poses(&arm) {
             let (_, stdout, _) = run(&arm, "fk", &q);
             let (x, y, z) = tool_position(&stdout);
-            assert!((x * x + y * y + z * z).sqrt() <= reach + 1e-9, "{} at {q:?}", arm.name);
+            assert!(
+                (x * x + y * y + z * z).sqrt() <= reach + 1e-9,
+                "{} at {q:?}",
+                arm.name
+            );
         }
     }
 }
@@ -286,8 +362,14 @@ fn the_published_joint_limits_are_enforced() {
     assert_eq!(code, Some(0), "{stderr}");
     // the UR5e turns a full circle either way: 6 rad is inside, 6.5 rad is not
     let ur = ur5e();
-    assert_eq!(run(&ur, "validate-limits", &[6.0, 0.0, 0.0, 0.0, 0.0, 0.0]).0, Some(0));
-    assert_eq!(run(&ur, "validate-limits", &[6.5, 0.0, 0.0, 0.0, 0.0, 0.0]).0, Some(1));
+    assert_eq!(
+        run(&ur, "validate-limits", &[6.0, 0.0, 0.0, 0.0, 0.0, 0.0]).0,
+        Some(0)
+    );
+    assert_eq!(
+        run(&ur, "validate-limits", &[6.5, 0.0, 0.0, 0.0, 0.0, 0.0]).0,
+        Some(1)
+    );
 }
 
 #[test]
