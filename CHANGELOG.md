@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.0] - Jacobian and inverse kinematics tested against two real arms, the test count out of the manifest notes and the universal README
+
 - **Jacobian and inverse kinematics.** New subcommands `jacobian --urdf PATH --target JOINT --joints "..."` (the 6 x N geometric Jacobian of a joint frame in the world frame, text or `--json`; a joint that follows another adds its share to the column of its master) and `ik --urdf PATH --target JOINT --goal X,Y,Z` (damped least squares on the position, steps limited, positions kept inside the joint limits; `--tolerance`, `--damping`, `--max-step` and `--max-iterations` are flags with defaults). The Jacobian is tested against finite differences of forward kinematics, with a follower and a prismatic joint; a goal out of reach is an error, not a pose.
 - **Tested against two real arms.** `tests/robot_arms.rs` builds the URDF of a UR5e and of a Franka Emika Panda from the Denavit-Hartenberg parameters that the manufacturers publish (no file of theirs is copied; the standard convention for the UR5e, Craig's modified one for the Panda) and compares the tool position that the binary computes with the one the DH chain gives by multiplying the 4x4 matrices directly, with the zero-pose positions the manufacturers document, with the reach bound of the links and with the published joint limits (`validate-limits`, `fk-checked`).
 - **The notes of the project manifest no longer carry a hand-written test count:** the counts went out of date at every change; the number of tests is stated by the README, which is checked against the code.
