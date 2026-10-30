@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Tested against two real arms.** `tests/robot_arms.rs` builds the URDF of a UR5e and of a Franka Emika Panda from the Denavit-Hartenberg parameters that the manufacturers publish (no file of theirs is copied; the standard convention for the UR5e, Craig's modified one for the Panda) and compares the tool position that the binary computes with the one the DH chain gives by multiplying the 4x4 matrices directly, with the zero-pose positions the manufacturers document, with the reach bound of the links and with the published joint limits (`validate-limits`, `fk-checked`).
 - **The notes of the project manifest no longer carry a hand-written test count:** the counts went out of date at every change; the number of tests is stated by the README, which is checked against the code.
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
 

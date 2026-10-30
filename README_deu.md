@@ -112,6 +112,8 @@ bleiben zukünftige Arbeit.
 * **Warum `fk-checked` ein neuer Subbefehl ist, statt `fk` an Ort und Stelle zu ändern.** `fk` ist das bestehende Low-Level-Dienstprogramm, reine Mathematik - manche Aufrufer (z. B. das Anpassen einer Grenze selbst) wollen tatsächlich die ungeprüfte Pose für einen außerhalb liegenden Wert. `fk-checked` fügt den fehlersicheren, grenzengeprüften Einstiegspunkt hinzu, den echte Aufrufer nutzen sollten, ohne stillschweigend zu ändern, was `fk` schon immer bedeutet hat.
 * **Warum der Gelenkgrenzen-Korpus (`corpus.rs`) nur für Tests ist.** Er existiert einzig, um den Regressionstests von `limits.rs` und `kinematics.rs` einen einzigen, echten, gemeinsamen Fixture-Satz zu geben, statt duplizierter Ad-hoc-Literale - er hat keinen Grund, in der Release-Binärdatei enthalten zu sein, daher ist er hinter `#[cfg(test)]` geschützt.
 
+**An zwei echten Armen getestet.** Die Tests erzeugen das URDF eines UR5e und eines Franka Emika Panda aus den Denavit-Hartenberg-Parametern, die die Hersteller veröffentlichen (keine ihrer Dateien wird kopiert), und vergleichen die vom Binary berechnete Werkzeugposition mit der, die die DH-Kette durch direkte Multiplikation der 4x4-Matrizen liefert, mit den von den Herstellern dokumentierten Positionen in der Nullpose, mit der Reichweitenschranke der Glieder und mit den veröffentlichten Gelenkgrenzen.
+
 ## 🚀 Schnellstart
 
 Benötigt die stabile Rust-Toolchain (Edition 2021) mit `cargo`.

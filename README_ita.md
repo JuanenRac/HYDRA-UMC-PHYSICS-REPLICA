@@ -112,6 +112,8 @@ lavoro futuro.
 * **Perché `fk-checked` è un nuovo sottocomando invece di modificare `fk` sul posto.** `fk` è l'utility di basso livello esistente, matematica pura - alcuni chiamanti (es. regolare un limite stesso) vogliono davvero la posa non verificata per un valore fuori intervallo. `fk-checked` aggiunge il punto di ingresso a prova di errore, con verifica dei limiti, che i chiamanti reali dovrebbero usare, senza cambiare silenziosamente ciò che `fk` ha sempre significato.
 * **Perché il corpus dei limiti dei giunti (`corpus.rs`) è solo per i test.** Esiste puramente per dare ai test di regressione di `limits.rs` e `kinematics.rs` un unico insieme di fixture reale e condiviso invece di letterali ad hoc duplicati - non ha motivo di essere incluso nel binario di release, quindi è protetto dietro `#[cfg(test)]`.
 
+**Provato su due bracci reali.** I test costruiscono l'URDF di un UR5e e di un Franka Emika Panda dai parametri di Denavit-Hartenberg pubblicati dai produttori (nessun loro file viene copiato) e confrontano la posizione dell'utensile calcolata dal binario con quella che dà la catena DH moltiplicando direttamente le matrici 4x4, con le posizioni in posa zero documentate dai produttori, con il limite di portata dei bracci e con i limiti dei giunti pubblicati.
+
 ## 🚀 Avvio rapido
 
 Richiede la toolchain Rust stabile (edizione 2021) con `cargo`.

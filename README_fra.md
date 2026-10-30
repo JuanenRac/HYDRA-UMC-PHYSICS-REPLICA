@@ -112,6 +112,8 @@ elle remplace le rôle de `SOLVE` pour v0) sont réelles aujourd'hui.
 * **Pourquoi `fk-checked` est une nouvelle sous-commande plutôt qu'une modification de `fk` sur place.** `fk` est l'utilitaire de bas niveau existant, mathématique pur - certains appelants (ex. ajuster une limite elle-même) veulent vraiment la pose non vérifiée pour une valeur hors limites. `fk-checked` ajoute le point d'entrée sécurisé, avec vérification de limites, que les appelants réels devraient utiliser, sans changer silencieusement ce que `fk` a toujours signifié.
 * **Pourquoi le corpus de limites d'articulation (`corpus.rs`) est réservé aux tests.** Il existe uniquement pour donner aux tests de régression de `limits.rs` et `kinematics.rs` un seul ensemble de fixtures réel et partagé au lieu de littéraux ad hoc dupliqués - il n'a aucune raison d'être livré dans le binaire de release, donc il est protégé derrière `#[cfg(test)]`.
 
+**Testé sur deux vrais bras.** Les tests construisent l'URDF d'un UR5e et d'un Franka Emika Panda à partir des paramètres de Denavit-Hartenberg que publient les fabricants (aucun de leurs fichiers n'est copié) et comparent la position de l'outil calculée par le binaire à celle que donne la chaîne DH en multipliant directement les matrices 4x4, aux positions en pose zéro documentées par les fabricants, à la borne de portée des segments et aux limites d'articulation publiées.
+
 ## 🚀 Démarrage rapide
 
 Nécessite la chaîne d'outils Rust stable (édition 2021) avec `cargo`.

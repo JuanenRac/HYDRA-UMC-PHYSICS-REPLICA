@@ -108,6 +108,8 @@ O `URDF` (leitura) e um passo de cinemática real e autónomo (`fk`/`validate-li
 * **Porque é que o `fk-checked` é um subcomando novo em vez de alterar o `fk` no lugar.** O `fk` é o utilitário matemático puro de baixo nível já existente - alguns chamadores (por exemplo, quem ajusta um limite) querem genuinamente a pose sem verificação para um valor fora de gama. O `fk-checked` acrescenta o ponto de entrada seguro, condicionado pelos limites, que os chamadores reais devem usar, sem mudar em silêncio o que o `fk` sempre significou.
 * **Porque é que o corpus de limites de juntas (`corpus.rs`) é só para testes.** Existe unicamente para dar aos testes de regressão do `limits.rs` e do `kinematics.rs` um conjunto único e real de fixtures em vez de literais ad hoc duplicados - não tem razão para ir no binário de lançamento, pelo que está atrás de `#[cfg(test)]`.
 
+**Testado com dois braços reais.** Os testes constroem o URDF de um UR5e e de um Franka Emika Panda a partir dos parâmetros de Denavit-Hartenberg que os fabricantes publicam (nenhum ficheiro seu é copiado) e comparam a posição da ferramenta calculada pelo binário com a que a cadeia DH dá multiplicando diretamente as matrizes 4x4, com as posições na pose zero que os fabricantes documentam, com o limite de alcance dos elos e com os limites de articulação publicados.
+
 ## 🚀 Início rápido
 
 Requer a cadeia de ferramentas Rust estável (edição 2021) com `cargo`.

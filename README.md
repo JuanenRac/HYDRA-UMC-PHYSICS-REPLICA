@@ -111,6 +111,8 @@ real today. `MESH`, the real `SOLVE` step (an actual MuJoCo/PhysX solver),
 * **Why `fk-checked` is a new subcommand instead of changing `fk` in place.** `fk` is the existing low-level pure-math utility - some callers (e.g. tuning a limit itself) genuinely want the unchecked pose for an out-of-range value. `fk-checked` adds the fail-safe, limit-gated entry point real callers should use, without silently changing what `fk` has always meant.
 * **Why the joint-limits corpus (`corpus.rs`) is test-only.** It exists purely to give `limits.rs`'s and `kinematics.rs`'s regression tests one shared, real set of fixtures instead of duplicated ad hoc literals - it has no reason to ship in the release binary, so it's gated behind `#[cfg(test)]`.
 
+**Tested against two real arms.** The tests build the URDF of a UR5e and of a Franka Emika Panda from the Denavit-Hartenberg parameters that the manufacturers publish (no file of theirs is copied) and compare the tool position that the binary computes with the one the DH chain gives by multiplying the 4x4 matrices directly, with the zero-pose positions the manufacturers document, with the reach bound of the links and with the published joint limits.
+
 ## 🚀 Quick start
 
 Requires the stable Rust toolchain (edition 2021) with `cargo`.

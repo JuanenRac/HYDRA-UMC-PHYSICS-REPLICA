@@ -112,6 +112,8 @@ futuro.
 * **Por qué `fk-checked` es un subcomando nuevo en vez de cambiar `fk` in situ.** `fk` es la utilidad de bajo nivel existente, matemática pura - algunos llamadores (ej. ajustar un límite en sí mismo) genuinamente quieren la pose sin verificar para un valor fuera de rango. `fk-checked` añade el punto de entrada a prueba de fallos, con verja de límites, que los llamadores reales deberían usar, sin cambiar en silencio lo que `fk` siempre ha significado.
 * **Por qué el corpus de límites de articulación (`corpus.rs`) es solo para tests.** Existe puramente para darle a los tests de regresión de `limits.rs` y `kinematics.rs` un único conjunto de fixtures real y compartido en vez de literales ad hoc duplicados - no tiene razón para incluirse en el binario de release, así que está protegido tras `#[cfg(test)]`.
 
+**Probado con dos brazos reales.** Las pruebas construyen el URDF de un UR5e y de un Franka Emika Panda a partir de los parámetros de Denavit-Hartenberg que publican los fabricantes (no se copia ningún fichero suyo) y comparan la posición de la herramienta que calcula el binario con la que da la cadena DH multiplicando directamente las matrices 4x4, con las posiciones en la pose cero que documentan los fabricantes, con la cota de alcance de los eslabones y con los límites de articulación publicados.
+
 ## 🚀 Inicio rápido
 
 Requiere la cadena de herramientas estable de Rust (edición 2021) con `cargo`.
