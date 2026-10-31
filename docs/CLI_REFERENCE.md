@@ -208,6 +208,14 @@ $ hydra-umc-physics-replica validate-limits --urdf arm.urdf --joints "shoulder=1
 LIMIT VIOLATION: joint 'shoulder' = 10.000000 (allowed [-3.141590, 3.141590])
 ```
 
+### `jacobian --urdf PATH --target JOINT --joints "name=value,..." [--json]`
+
+The 6 x N geometric Jacobian of the frame of `JOINT` in the world frame (three linear and three angular rows, one column per joint that moves it; a joint that follows another through `<mimic>` adds its share to the column of its master). Text output lists the columns and the six rows; `--json` prints the same as JSON. It is tested against finite differences of forward kinematics, with a follower and a prismatic joint.
+
+### `ik --urdf PATH --target JOINT --goal X,Y,Z [--joints "name=value,..."] [--tolerance M] [--damping L] [--max-step M] [--max-iterations N]`
+
+Inverse kinematics of the position of the frame of `JOINT` (the goal in metres, world frame) by damped least squares, starting from `--joints` (zero when omitted). Steps are limited and positions are kept inside the joint limits. Defaults: `--tolerance 1e-4` (m), `--damping 0.05`, `--max-step 0.1` (m per iteration) and `--max-iterations 200`. It prints one `joint=value` line per joint (radians or metres) and, on standard error, how close it got and in how many iterations. A goal out of reach, or one not reached within the iterations, is an error (exit code `1`) and not a pose. A missing `--urdf`, `--target` or `--goal`, or a goal that is not three finite numbers, exits with code `2`.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -222,4 +230,4 @@ This is a real, deliberately partial URDF reader and kinematics engine, not
 a MuJoCo/PhysX simulation yet — see the module docs at the top of
 `src/main.rs` and `src/urdf.rs` for the honest scope: a real `parent`/
 `child` tree walk (branches included, `<mimic>` followers worked out), and no
-actual rigid-body or contact simulation, no Jacobian and no inverse kinematics.
+actual rigid-body or contact simulation, no orientation goal in the inverse kinematics (position only).

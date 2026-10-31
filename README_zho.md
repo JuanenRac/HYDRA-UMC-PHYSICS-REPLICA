@@ -71,6 +71,8 @@ GPL-3.0-or-later - see LICENSE
 
 **诚实说明——今天实际运行的内容：** `fk --urdf 路径 --joints "j1=0.5,..."` 通过串联 URDF 关节变换，计算每个关节真实的世界坐标位置，而不管某个位置是否在其声明的限位之内；`fk-checked` 执行同样的计算，但会先针对每个位置调用 `validate-limits` 的真实限位检查，只要有任何一项超出范围就拒绝计算（或报告）任何位姿；`validate-limits --urdf 路径 --joints "..."` 则单独报告真实的超限关节。三者都是纯运动学——没有刚体动力学，没有接触力，尚未接入任何 MuJoCo/PhysX 求解器，并且 URDF 读取器会遍历真实的 `parent`/`child` 连杆树，包括分支（每个关节都从携带其父连杆的关节开始放置），计算跟随另一个关节的关节（`<mimic>`），并且在需要时还会检查 `<safety_controller>` 的软限位以及速度和力的限位（`validate-limits --soft --velocities ... --efforts ...`）。具体已交付内容请参见 [`CHANGELOG.md`](CHANGELOG.md)，尚待完成的内容请参见下方路线图。
 
+* 🧮 **雅可比矩阵与逆运动学（真实，纯运动学）：** `jacobian --urdf PATH --target JOINT --joints "..."` 输出关节坐标系在世界坐标系中的 6 x N 几何雅可比矩阵（文本或 `--json`；通过 `<mimic>` 跟随另一个关节的关节，会把自己的部分加到其主关节的列上），`ik --urdf PATH --target JOINT --goal X,Y,Z` 用阻尼最小二乘法求解位置，步长受限，位置保持在关节限位之内（`--tolerance`、`--damping`、`--max-step` 和 `--max-iterations` 都有默认值）。雅可比矩阵用正运动学的有限差分检验；够不到的目标是错误，而不是位姿。用公开的 Denavit-Hartenberg 参数构建的 UR5e 和 Franka Emika Panda 用于检验正运动学。参见 `docs/CLI_REFERENCE.md`。
+
 ## 🧩 在 HYDRA-UMC 中的角色
 
 **HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：读取 URDF 树，计算每个关节的位姿（正向运动学），并对照限位检查关节位置。它不模拟动力学：没有接触、摩擦或刚体模型。
