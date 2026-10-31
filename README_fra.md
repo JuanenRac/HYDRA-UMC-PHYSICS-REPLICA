@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.0` |
 | Maturité | Fonctionnel |
-| Tests | 86 (`cargo test`) |
+| Tests | 133 (`cargo test`) |
 | Technologie | Rust / roxmltree / URDF forward kinematics |
 | Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
 
@@ -51,7 +51,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 | Domaine | État | Ce que cela veut dire ici |
 |---|---|---|
 | Logiciel | 🟡 | Fonctionne pour son usage principal ; la vérification d'honnêteté ci-dessus liste ce qui manque encore |
-| Tests | 🟢 | 86 tests automatiques, exécutés à chaque modification |
+| Tests | 🟢 | 133 tests automatiques, exécutés à chaque modification |
 | Matériel réel | 🔴 | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
 | Documentation | 🟢 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
 
@@ -72,6 +72,8 @@ Les unités sont celles d'URDF (mètres et radians). `fk` affiche la position de
 **Vérification d'honnêteté - ce qui fonctionne réellement aujourd'hui :** `fk --urdf CHEMIN --joints "j1=0.5,..."` calcule de vraies positions monde par articulation en chaînant les transformations d'articulation du URDF, peu importe qu'une position soit dans sa limite déclarée ; `fk-checked` effectue le même calcul mais vérifie d'abord chaque position par rapport à la vraie vérification de `validate-limits`, refusant de calculer (ou de signaler) une quelconque pose si quelque chose est hors limites ; `validate-limits --urdf CHEMIN --joints "..."` signale de vraies articulations hors limites de son côté. Les trois sont de la cinématique pure - pas de dynamique de corps rigide, pas de forces de contact, aucun solveur MuJoCo/PhysX encore branché, et le lecteur URDF parcourt le vrai arbre de liaisons `parent`/`child`, branches comprises (chaque articulation est placée à partir de l'articulation qui porte sa liaison parente), calcule les articulations qui en suivent une autre (`<mimic>`) et, sur demande, vérifie aussi les limites souples d'un `<safety_controller>` ainsi que les limites de vitesse et d'effort (`validate-limits --soft --velocities ... --efforts ...`). Voir [`CHANGELOG.md`](CHANGELOG.md) pour ce qui a été livré exactement, et la Roadmap ci-dessous pour ce qui reste à venir.
 
 * 🧮 **Jacobienne et cinématique inverse (réelles, cinématique pure) :** `jacobian --urdf PATH --target JOINT --joints "..."` affiche la jacobienne géométrique 6 x N du repère d'une articulation dans le repère monde (texte ou `--json` ; une articulation qui en suit une autre par `<mimic>` ajoute sa part à la colonne de sa maîtresse), et `ik --urdf PATH --target JOINT --goal X,Y,Z` résout la position par moindres carrés amortis avec des pas limités et des positions gardées dans les limites des articulations (`--tolerance`, `--damping`, `--max-step` et `--max-iterations` ont des valeurs par défaut). La jacobienne est testée contre des différences finies de la cinématique directe ; un objectif hors d'atteinte est une erreur, pas une pose. Un UR5e et un Franka Emika Panda, construits à partir des paramètres de Denavit-Hartenberg publiés, vérifient la cinématique directe. Voir `docs/CLI_REFERENCE.md`.
+
+* 🚧 **Prédiction de collision par cinématique directe (réelle, cinématique pure, surestime par construction) :** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` dit si une courte liste d'états des articulations amène le robot dans une zone d'un fichier de zones de HYDRA-UMC-SAFETY-ZONES ou contre lui-même. Les segments du robot sont ceux entre les repères des articulations, avec les rayons que vous déclarez (il n'y a pas de valeurs par défaut), découpés en morceaux et remplacés par des sphères qui les contiennent ; les articulations sont interpolées et échantillonnées avec une borne sur le mouvement entre deux échantillons, et une zone n'est jamais rendue plus petite. Code de sortie `0` libre, `1` contact prévu, `2` entrée incorrecte. Deux tests de propriétés à graine fixe vérifient qu'une zone autour d'un point qui se trouve vraiment dans un segment n'est jamais déclarée libre. Non essayé avec un robot réel. Voir `docs/COLLISION_PREDICTION.md`.
 
 ## 🧩 Rôle dans HYDRA-UMC
 
@@ -129,7 +131,7 @@ cargo test
 
 ## 🧪 Tests
 
-86 tests automatiques s'exécutent avec `cargo test`. Ils n'ont besoin ni de matériel ni de rien en dehors de cette machine.
+133 tests automatiques s'exécutent avec `cargo test`. Ils n'ont besoin ni de matériel ni de rien en dehors de cette machine.
 
 La CI exécute `HYDRA_UMC_CI=1 python tools/ci_validate.py`, qui vérifie le manifeste, les documents, les huit README et les images.
 
@@ -139,7 +141,7 @@ Nécessite la chaîne d'outils Rust (`cargo`/`rustc`, à installer via [rustup](
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (86 tests), puis `cargo build --release`
+./build.sh   # `cargo test` (133 tests), puis `cargo build --release`
 ./run.sh     # exécute target/release/hydra-umc-physics-replica, affiche nom + version + rôle
 ```
 
@@ -197,6 +199,7 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── kinematics.rs                forward_kinematics() réel + forward_kinematics_checked()
 │   ├── limits.rs                    validate_limits() réel
 │   ├── corpus.rs                    Corpus de fixtures de limites, réservé aux tests
+│   ├── collision.rs                 Prédiction de contact avec les zones et lui-même (surestime par construction) : `predict-collision`
 │   └── main.rs                      Point d'entrée + sous-commandes réelles `fk`/`fk-checked`/`validate-limits`
 ├── tests/                           cli_contract.rs et tree_contract.rs : les erreurs de la ligne de commande (articulations mal orthographiées, répétées ou manquantes) et le placement des branches et des articulations mimic
 ├── docs/                            documents du projet

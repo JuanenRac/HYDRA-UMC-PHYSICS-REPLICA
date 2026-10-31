@@ -17,3 +17,5 @@ readme = "README.md"
 # exchanging dynamic state (pos/vel/acc) with HYDRA-UMC-TWIN.
 [dependencies]
 roxmltree = "0.21"
+# The JSON files of `predict-collision` (the zones, the sizes of the robot, the trajectory) and its answer.
+serde_json = "1"

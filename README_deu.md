@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.0` |
 | Reifegrad | Funktionsfähig |
-| Tests | 86 (`cargo test`) |
+| Tests | 133 (`cargo test`) |
 | Technik | Rust / roxmltree / URDF forward kinematics |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 
@@ -51,7 +51,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Bereich | Stand | Was das hier bedeutet |
 |---|---|---|
 | Software | 🟡 | Funktioniert für seinen Hauptzweck; die Ehrlichkeitsprüfung oben nennt, was noch fehlt |
-| Tests | 🟢 | 86 automatische Tests, bei jeder Änderung ausgeführt |
+| Tests | 🟢 | 133 automatische Tests, bei jeder Änderung ausgeführt |
 | Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 | Dokumentation | 🟢 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
 
@@ -72,6 +72,8 @@ Die Einheiten sind die von URDF (Meter und Radiant). `fk` gibt die Position jede
 **Ehrlichkeitscheck - was heute wirklich läuft:** `fk --urdf PFAD --joints "j1=0.5,..."` berechnet echte Weltraum-Positionen pro Gelenk durch Verketten der URDF-Gelenktransformationen, unabhängig davon, ob eine Position innerhalb ihrer deklarierten Grenze liegt; `fk-checked` führt dieselbe Berechnung durch, prüft aber zuerst jede Position gegen die echte Prüfung von `validate-limits` und verweigert die Berechnung (oder Meldung) jeglicher Pose, falls etwas außerhalb des Bereichs liegt; `validate-limits --urdf PFAD --joints "..."` meldet echte Gelenke außerhalb ihres Bereichs eigenständig. Alle drei sind reine Kinematik - keine Starrkörperdynamik, keine Kontaktkräfte, noch kein MuJoCo/PhysX-Solver angebunden, und der URDF-Reader durchläuft den echten `parent`/`child`-Link-Baum samt Verzweigungen (jedes Gelenk wird von dem Gelenk aus platziert, das seinen Eltern-Link trägt), berechnet die Gelenke, die einem anderen folgen (`<mimic>`), und prüft auf Wunsch auch die Soft-Grenzen eines `<safety_controller>` sowie Geschwindigkeits- und Kraftgrenzen (`validate-limits --soft --velocities ... --efforts ...`). Siehe [`CHANGELOG.md`](CHANGELOG.md) für genau das, was geliefert wurde, und die Roadmap unten für das, was noch aussteht.
 
 * 🧮 **Jacobi-Matrix und inverse Kinematik (real, reine Kinematik):** `jacobian --urdf PATH --target JOINT --joints "..."` gibt die geometrische 6-x-N-Jacobi-Matrix des Koordinatensystems eines Gelenks im Weltsystem aus (Text oder `--json`; ein Gelenk, das über `<mimic>` einem anderen folgt, addiert seinen Anteil zur Spalte seines Leitgelenks), und `ik --urdf PATH --target JOINT --goal X,Y,Z` löst die Position mit gedämpfter kleinster Quadrate bei begrenzten Schritten und Positionen innerhalb der Gelenkgrenzen (`--tolerance`, `--damping`, `--max-step` und `--max-iterations` haben Standardwerte). Die Jacobi-Matrix wird gegen finite Differenzen der Vorwärtskinematik getestet; ein unerreichbares Ziel ist ein Fehler, keine Pose. Ein UR5e und ein Franka Emika Panda, aus den veröffentlichten Denavit-Hartenberg-Parametern gebaut, prüfen die Vorwärtskinematik. Siehe `docs/CLI_REFERENCE.md`.
+
+* 🚧 **Kollisionsvorhersage durch Vorwärtskinematik (real, reine Kinematik, überschätzt konstruktionsbedingt):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` sagt, ob eine kurze Liste von Gelenkzuständen den Roboter in eine Zone einer Zonendatei von HYDRA-UMC-SAFETY-ZONES oder in sich selbst führt. Die Glieder sind die Strecken zwischen den Gelenkkoordinatensystemen mit den Radien, die du angibst (es gibt keine Standardwerte), in Stücke geschnitten und durch Kugeln ersetzt, die sie enthalten; die Gelenke werden interpoliert und mit einer Schranke für die Bewegung zwischen den Stichproben abgetastet, und eine Zone wird nie kleiner gemacht. Exit-Code `0` frei, `1` Kontakt vorhergesagt, `2` ungültige Eingabe. Zwei Eigenschaftstests mit festem Startwert prüfen, dass eine Zone um einen Punkt, der wirklich in einem Glied liegt, nie als frei gemeldet wird. Nicht mit einem echten Roboter erprobt. Siehe `docs/COLLISION_PREDICTION.md`.
 
 ## 🧩 Rolle in HYDRA-UMC
 
@@ -129,7 +131,7 @@ cargo test
 
 ## 🧪 Tests
 
-86 automatische Tests laufen mit `cargo test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
+133 automatische Tests laufen mit `cargo test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
 
 Die CI führt `HYDRA_UMC_CI=1 python tools/ci_validate.py` aus; das prüft das Manifest, die Dokumente, die acht READMEs und die Bilder.
 
@@ -139,7 +141,7 @@ Erfordert die Rust-Toolchain (`cargo`/`rustc`, Installation via [rustup](https:/
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (86 Tests), dann `cargo build --release`
+./build.sh   # `cargo test` (133 Tests), dann `cargo build --release`
 ./run.sh     # führt target/release/hydra-umc-physics-replica aus, gibt Name + Version + Rolle aus
 ```
 
@@ -197,6 +199,7 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── kinematics.rs                Echtes forward_kinematics() + forward_kinematics_checked()
 │   ├── limits.rs                    Echtes validate_limits()
 │   ├── corpus.rs                    Fixture-Korpus für Gelenkgrenzen, nur für Tests
+│   ├── collision.rs                 Kontaktvorhersage mit Zonen und sich selbst (überschätzt konstruktionsbedingt): `predict-collision`
 │   └── main.rs                      Einstiegspunkt + echte `fk`/`fk-checked`/`validate-limits`-Subbefehle
 ├── tests/                           cli_contract.rs und tree_contract.rs: die Kommandozeilenfehler (falsch geschriebene, doppelte oder fehlende Gelenke) und die Platzierung von Zweigen und Mimic-Gelenken
 ├── docs/                            Dokumente des Projekts

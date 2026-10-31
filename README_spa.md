@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.1.0` |
 | Madurez | Funcional |
-| Tests | 86 (`cargo test`) |
+| Tests | 133 (`cargo test`) |
 | Tecnología | Rust / roxmltree / URDF forward kinematics |
 | En hardware real | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 
@@ -51,7 +51,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟢 | 86 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟢 | 133 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🔴 | Todavía no: no consta ninguna ejecución en hardware real para esta versión |
 | Documentación | 🟢 | README en ocho idiomas, comprobado contra el manifiesto en cada cambio |
 
@@ -72,6 +72,8 @@ Las unidades son las de URDF (metros y radianes). `fk` imprime la posición de c
 **Comprobación de honestidad - qué funciona hoy de verdad:** `fk --urdf RUTA --joints "j1=0.5,..."` calcula posiciones reales en el mundo por articulación encadenando las transformaciones de las articulaciones del URDF, sin importar si una posición está dentro de su límite declarado; `fk-checked` ejecuta el mismo cálculo pero comprueba primero cada posición contra la verificación real de `validate-limits`, negándose a calcular (o reportar) ninguna pose si algo está fuera de rango; `validate-limits --urdf RUTA --joints "..."` reporta articulaciones reales fuera de rango por su cuenta. Los tres son cinemática pura - sin dinámica de cuerpo rígido, sin fuerzas de contacto, sin ningún solver MuJoCo/PhysX conectado todavía, y el lector de URDF recorre el árbol real de enlaces `parent`/`child`, ramas incluidas (cada articulación se coloca a partir de la articulación que lleva su enlace padre), calcula las articulaciones que siguen a otra (`<mimic>`) y, si se pide, comprueba también los límites blandos de un `<safety_controller>` y los límites de velocidad y esfuerzo (`validate-limits --soft --velocities ... --efforts ...`). Ver [`CHANGELOG.md`](CHANGELOG.md) para lo entregado exactamente, y la Hoja de Ruta abajo para lo que sigue por delante.
 
 * 🧮 **Jacobiana y cinemática inversa (reales, cinemática pura):** `jacobian --urdf PATH --target JOINT --joints "..."` imprime la jacobiana geométrica 6 x N del sistema de una articulación en el sistema del mundo (texto o `--json`; una articulación que sigue a otra mediante `<mimic>` suma su parte a la columna de su maestra), e `ik --urdf PATH --target JOINT --goal X,Y,Z` resuelve la posición por mínimos cuadrados amortiguados con pasos limitados y posiciones dentro de los límites de las articulaciones (`--tolerance`, `--damping`, `--max-step` y `--max-iterations` tienen valores por defecto). La jacobiana se prueba contra diferencias finitas de la cinemática directa; un objetivo fuera de alcance es un error, no una pose. Un UR5e y un Franka Emika Panda, construidos con los parámetros de Denavit-Hartenberg publicados, comprueban la cinemática directa. Véase `docs/CLI_REFERENCE.md`.
+
+* 🚧 **Predicción de colisión por cinemática directa (real, cinemática pura, sobreestima por construcción):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` dice si una lista corta de estados de las articulaciones lleva al robot a una zona de un fichero de zonas de HYDRA-UMC-SAFETY-ZONES o contra sí mismo. Los eslabones son los segmentos entre los sistemas de referencia de las articulaciones con los radios que declaras (no hay valores por defecto), cortados en trozos y sustituidos por esferas que los contienen; las articulaciones se interpolan y se muestrean con una cota del movimiento entre muestras, y una zona nunca se hace más pequeña. Código de salida `0` libre, `1` contacto previsto, `2` entrada incorrecta. Dos pruebas de propiedades con semilla comprueban que una zona alrededor de un punto que de verdad está dentro de un eslabón nunca se da por libre. No probado con un robot real. Véase `docs/COLLISION_PREDICTION.md`.
 
 ## 🧩 Papel en HYDRA-UMC
 
@@ -129,7 +131,7 @@ cargo test
 
 ## 🧪 Pruebas
 
-86 pruebas automáticas se ejecutan con `cargo test`. No necesitan hardware ni nada fuera de esta máquina.
+133 pruebas automáticas se ejecutan con `cargo test`. No necesitan hardware ni nada fuera de esta máquina.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 
@@ -139,7 +141,7 @@ Requiere el toolchain de Rust (`cargo`/`rustc`, instalar vía [rustup](https://r
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (86 tests), luego `cargo build --release`
+./build.sh   # `cargo test` (133 tests), luego `cargo build --release`
 ./run.sh     # ejecuta target/release/hydra-umc-physics-replica, imprime nombre + version + rol
 ```
 
@@ -197,6 +199,7 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── kinematics.rs                forward_kinematics() real + forward_kinematics_checked()
 │   ├── limits.rs                    validate_limits() real
 │   ├── corpus.rs                    Corpus de fixtures de limites, solo para tests
+│   ├── collision.rs                 Predicción de contacto con zonas y consigo mismo (sobreestima por construcción): `predict-collision`
 │   └── main.rs                      Entry point + subcomandos reales `fk`/`fk-checked`/`validate-limits`
 ├── tests/                           cli_contract.rs y tree_contract.rs: los errores de la línea de órdenes (articulaciones mal escritas, repetidas o ausentes) y la colocación de ramas y articulaciones mimic
 ├── docs/                            documentos del proyecto

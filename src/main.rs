@@ -15,6 +15,7 @@
 //! `kinematics.rs`/`limits.rs` for what "real" means here, and what is still
 //! out of scope (any actual MuJoCo/PhysX rigid-body or contact simulation).
 
+mod collision;
 #[cfg(test)]
 mod corpus;
 mod jacobian;
@@ -585,6 +586,98 @@ fn run_ik(args: &[String]) -> ExitCode {
     }
 }
 
+/// Reads a JSON file for `predict-collision`, with the name of the flag in the error.
+fn read_json_flag(args: &[String], flag: &str) -> Result<serde_json::Value, String> {
+    let path = find_flag(args, flag).ok_or_else(|| format!("missing required {flag} PATH"))?;
+    // a file the size of a map of the cell, not of a movie: refuse anything that is not a small text file
+    let meta = fs::metadata(&path).map_err(|e| format!("could not read '{path}': {e}"))?;
+    if meta.len() > 4 * 1024 * 1024 {
+        return Err(format!("'{path}' is larger than 4 MiB"));
+    }
+    let text = fs::read_to_string(&path).map_err(|e| format!("could not read '{path}': {e}"))?;
+    serde_json::from_str(&text).map_err(|e| format!("'{path}' is not valid JSON: {e}"))
+}
+
+/// Exit status: 0 no contact predicted, 1 a contact with a zone or the robot itself is predicted, 2 the input is wrong.
+fn run_predict_collision(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        eprintln!("predict-collision: missing required --urdf PATH");
+        return ExitCode::from(2);
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("predict-collision: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let loaded = (|| -> Result<_, String> {
+        let zones = collision::parse_zones(&read_json_flag(args, "--zones")?)?;
+        let config = collision::parse_config(&read_json_flag(args, "--config")?)?;
+        let mut states = collision::parse_trajectory(&read_json_flag(args, "--trajectory")?)?;
+        if find_flag(args, "--base").is_some() {
+            let base = collision::parse_base(&read_json_flag(args, "--base")?)?;
+            states = collision::fill_from_base(&model, &states, &base);
+        }
+        Ok((zones, config, states))
+    })();
+    let (zones, config, states) = match loaded {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("predict-collision: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    match collision::predict(&model, &zones, &config, &states) {
+        Ok(prediction) => {
+            eprintln!("{ESTIMATE_NOTICE}");
+            if has_flag(args, "--json") {
+                println!("{}", prediction.to_json());
+            } else {
+                println!(
+                    "{}: {} state(s), {} sample(s), smallest clearance to a zone {} m, to itself {} m, {} contact(s)",
+                    if prediction.collision() {
+                        "COLLISION PREDICTED"
+                    } else {
+                        "clear"
+                    },
+                    prediction.states,
+                    prediction.samples,
+                    prediction
+                        .min_zone_clearance_m
+                        .map_or("-".to_string(), |v| format!("{v:.6}")),
+                    prediction
+                        .min_self_clearance_m
+                        .map_or("-".to_string(), |v| format!("{v:.6}")),
+                    prediction.hits_total
+                );
+                for hit in &prediction.hits {
+                    println!(
+                        "  at state {:.3}: {} {} with {} (clearance {:.6} m)",
+                        hit.at,
+                        hit.kind,
+                        hit.link,
+                        hit.zone
+                            .as_deref()
+                            .or(hit.other_link.as_deref())
+                            .unwrap_or("?"),
+                        hit.clearance_m
+                    );
+                }
+            }
+            if prediction.collision() {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
+            }
+        }
+        Err(e) => {
+            eprintln!("predict-collision: {e}");
+            ExitCode::from(2)
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -594,6 +687,7 @@ fn main() -> ExitCode {
         Some("validate-limits") => run_validate_limits(&args[1..]),
         Some("jacobian") => run_jacobian(&args[1..]),
         Some("ik") => run_ik(&args[1..]),
+        Some("predict-collision") => run_predict_collision(&args[1..]),
         _ => {
             println!("{PROJECT_NAME} v{VERSION}");
             println!("{ROLE}");

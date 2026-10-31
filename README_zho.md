@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.1.0` |
 | 成熟度 | 可用 |
-| 测试 | 86 (`cargo test`) |
+| 测试 | 133 (`cargo test`) |
 | 技术栈 | Rust / roxmltree / URDF forward kinematics |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
 
@@ -51,7 +51,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 86 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 133 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
@@ -72,6 +72,8 @@ GPL-3.0-or-later - see LICENSE
 **诚实说明——今天实际运行的内容：** `fk --urdf 路径 --joints "j1=0.5,..."` 通过串联 URDF 关节变换，计算每个关节真实的世界坐标位置，而不管某个位置是否在其声明的限位之内；`fk-checked` 执行同样的计算，但会先针对每个位置调用 `validate-limits` 的真实限位检查，只要有任何一项超出范围就拒绝计算（或报告）任何位姿；`validate-limits --urdf 路径 --joints "..."` 则单独报告真实的超限关节。三者都是纯运动学——没有刚体动力学，没有接触力，尚未接入任何 MuJoCo/PhysX 求解器，并且 URDF 读取器会遍历真实的 `parent`/`child` 连杆树，包括分支（每个关节都从携带其父连杆的关节开始放置），计算跟随另一个关节的关节（`<mimic>`），并且在需要时还会检查 `<safety_controller>` 的软限位以及速度和力的限位（`validate-limits --soft --velocities ... --efforts ...`）。具体已交付内容请参见 [`CHANGELOG.md`](CHANGELOG.md)，尚待完成的内容请参见下方路线图。
 
 * 🧮 **雅可比矩阵与逆运动学（真实，纯运动学）：** `jacobian --urdf PATH --target JOINT --joints "..."` 输出关节坐标系在世界坐标系中的 6 x N 几何雅可比矩阵（文本或 `--json`；通过 `<mimic>` 跟随另一个关节的关节，会把自己的部分加到其主关节的列上），`ik --urdf PATH --target JOINT --goal X,Y,Z` 用阻尼最小二乘法求解位置，步长受限，位置保持在关节限位之内（`--tolerance`、`--damping`、`--max-step` 和 `--max-iterations` 都有默认值）。雅可比矩阵用正运动学的有限差分检验；够不到的目标是错误，而不是位姿。用公开的 Denavit-Hartenberg 参数构建的 UR5e 和 Franka Emika Panda 用于检验正运动学。参见 `docs/CLI_REFERENCE.md`。
+
+* 🚧 **基于正向运动学的碰撞预测（已实现，纯运动学，按构造偏大估计）：** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` 判断一小段关节状态列表是否会使机器人进入 HYDRA-UMC-SAFETY-ZONES 区域文件中的某个区域，或碰到自身。连杆是各关节坐标系之间的线段，半径由你声明（没有默认值），被切成小段并替换为包含它们的球；关节会被插值并采样，并给出采样间运动的上界，区域绝不会被缩小。退出码 `0` 表示无接触，`1` 表示预测到接触，`2` 表示输入错误。两个固定种子的性质测试检查：在真正位于连杆内部的点周围的区域，绝不会被报告为无接触。尚未在真实机器人上试验。参见 `docs/COLLISION_PREDICTION.md`。
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
@@ -128,7 +130,7 @@ cargo test
 
 ## 🧪 测试
 
-运行 `cargo test` 会执行 86 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+运行 `cargo test` 会执行 133 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 
@@ -139,7 +141,7 @@ CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档�
 
 ```bash
 # Linux / macOS
-./build.sh   # 、`cargo test`（86 个测试），然后执行 `cargo build --release`
+./build.sh   # 、`cargo test`（133 个测试），然后执行 `cargo build --release`
 ./run.sh     # 运行 target/release/hydra-umc-physics-replica，打印名称 + 版本 + 角色
 ```
 
@@ -202,6 +204,7 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── kinematics.rs                真实的 forward_kinematics() + forward_kinematics_checked()
 │   ├── limits.rs                    真实的 validate_limits()
 │   ├── corpus.rs                    仅用于测试的限位 fixture 语料库
+│   ├── collision.rs                 与区域及自身接触的预测（按构造偏大估计）：`predict-collision`
 │   └── main.rs                      入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令
 ├── tests/                           cli_contract.rs 和 tree_contract.rs: 命令行错误 (关节拼写错误、重复或缺失) 以及分支与 mimic 关节的放置
 ├── docs/                            项目文档

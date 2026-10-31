@@ -216,13 +216,17 @@ The 6 x N geometric Jacobian of the frame of `JOINT` in the world frame (three l
 
 Inverse kinematics of the position of the frame of `JOINT` (the goal in metres, world frame) by damped least squares, starting from `--joints` (zero when omitted). Steps are limited and positions are kept inside the joint limits. Defaults: `--tolerance 1e-4` (m), `--damping 0.05`, `--max-step 0.1` (m per iteration) and `--max-iterations 200`. It prints one `joint=value` line per joint (radians or metres) and, on standard error, how close it got and in how many iterations. A goal out of reach, or one not reached within the iterations, is an error (exit code `1`) and not a pose. A missing `--urdf`, `--target` or `--goal`, or a goal that is not three finite numbers, exits with code `2`.
 
+### `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH [--base PATH] [--json]`
+
+Does this short list of states bring the robot into a protected zone, or into itself? The robot is reduced to the segments between its joint frames with the radii of `--config`, the zones are the ones of a zones file of HYDRA-UMC-SAFETY-ZONES, the joints are interpolated between the states and sampled, and every step goes in the direction that over-estimates. `--config` has no defaults for the sizes of the robot (`link_radius_m` and `tool_extent_m` are required); `--base` gives a state the joints it leaves out. With `--json` it prints one object (`collision`, `level`, `self_collision`, `hits`, `min_clearance_m`, ...), otherwise a summary line and the contacts. Exit code `0`: no contact predicted; `1`: a contact is predicted; `2`: the input is wrong and nothing is printed on the standard output. The model, its assumptions and what it does not cover are in `docs/COLLISION_PREDICTION.md`. Not tried with a real robot.
+
 ## Exit codes
 
 | Code | Meaning |
 |------|---------|
 | `0` | ok — pose computed (`fk`/`fk-checked`), or no limit violations (`validate-limits`) |
-| `1` | a real limit violation — `fk-checked` refused to compute a pose, or `validate-limits` reported one or more violations |
-| `2` | usage/input error — missing `--urdf`/`--joints` value, unreadable or malformed URDF file, a malformed, unknown or repeated `--joints` entry, a limited joint with no position (`validate-limits`), or a revolute/prismatic joint with no `<limit>` (`fk-checked`, `validate-limits`) |
+| `1` | a real limit violation — `fk-checked` refused to compute a pose, or `validate-limits` reported one or more violations; `ik` did not reach the goal; `predict-collision` predicts a contact |
+| `2` | usage/input error — missing `--urdf`/`--joints` value, unreadable or malformed URDF file, a malformed, unknown or repeated `--joints` entry, a limited joint with no position (`validate-limits`), or a revolute/prismatic joint with no `<limit>` (`fk-checked`, `validate-limits`); for `predict-collision` also a malformed zones, configuration or trajectory file, a joint the robot does not have and a joint with no position |
 
 ## Not yet wired in
 

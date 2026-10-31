@@ -134,6 +134,29 @@
           }
         },
         {
+          "name": "collision.rs",
+          "desc": {
+            "en": "Contact prediction against zones and itself",
+            "es": "Predicción de contacto con zonas y consigo mismo",
+            "de": "Kontaktvorhersage mit Zonen und sich selbst",
+            "fr": "Prédiction de contact avec les zones et lui-même",
+            "it": "Previsione del contatto con zone e con sé stesso",
+            "ja": "ゾーンと自己への接触の予測",
+            "zh": "与区域及自身接触的预测",
+            "pt": "Previsão de contacto com zonas e consigo próprio"
+          },
+          "tree_desc": {
+            "en": "Contact prediction against zones and itself (over-estimates by construction): `predict-collision`",
+            "es": "Predicción de contacto con zonas y consigo mismo (sobreestima por construcción): `predict-collision`",
+            "de": "Kontaktvorhersage mit Zonen und sich selbst (überschätzt konstruktionsbedingt): `predict-collision`",
+            "fr": "Prédiction de contact avec les zones et lui-même (surestime par construction) : `predict-collision`",
+            "it": "Previsione del contatto con zone e con sé stesso (sovrastima per costruzione): `predict-collision`",
+            "ja": "ゾーンと自己への接触の予測（構造上、過大に見積もる）：`predict-collision`",
+            "zh": "与区域及自身接触的预测（按构造偏大估计）：`predict-collision`",
+            "pt": "Previsão de contacto com zonas e consigo próprio (sobrestima por construção): `predict-collision`"
+          }
+        },
+        {
           "name": "main.rs",
           "desc": {
             "en": "Entry point + real",

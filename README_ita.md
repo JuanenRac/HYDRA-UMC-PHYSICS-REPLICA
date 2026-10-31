@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-86%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versione | `0.1.0` |
 | Maturità | Funzionale |
-| Test | 86 (`cargo test`) |
+| Test | 133 (`cargo test`) |
 | Tecnologia | Rust / roxmltree / URDF forward kinematics |
 | Su hardware reale | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 
@@ -51,7 +51,7 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Area | Stato | Cosa significa qui |
 |---|---|---|
 | Software | 🟡 | Funziona per il suo scopo principale; la verifica di onestà qui sopra elenca ciò che manca ancora |
-| Test | 🟢 | 86 test automatici, eseguiti a ogni modifica |
+| Test | 🟢 | 133 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🔴 | Non ancora: per questa versione non risulta alcuna esecuzione su hardware reale |
 | Documentazione | 🟢 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
@@ -72,6 +72,8 @@ Le unità sono quelle di URDF (metri e radianti). `fk` stampa la posizione di og
 **Verifica di onestà - cosa funziona davvero oggi:** `fk --urdf PERCORSO --joints "j1=0.5,..."` calcola vere posizioni nel mondo per ogni giunto concatenando le trasformazioni dei giunti del URDF, indipendentemente dal fatto che una posizione sia nel proprio limite dichiarato; `fk-checked` esegue lo stesso calcolo ma verifica prima ogni posizione contro la vera verifica di `validate-limits`, rifiutandosi di calcolare (o riportare) qualsiasi posa se qualcosa è fuori intervallo; `validate-limits --urdf PERCORSO --joints "..."` segnala veri giunti fuori intervallo per conto proprio. Tutti e tre sono cinematica pura - nessuna dinamica di corpo rigido, nessuna forza di contatto, nessun solutore MuJoCo/PhysX ancora collegato, e il lettore URDF percorre il vero albero di link `parent`/`child`, rami compresi (ogni giunto è posto a partire dal giunto che porta il suo link genitore), calcola i giunti che ne seguono un altro (`<mimic>`) e, su richiesta, controlla anche i limiti morbidi di un `<safety_controller>` e i limiti di velocità e sforzo (`validate-limits --soft --velocities ... --efforts ...`). Vedi [`CHANGELOG.md`](CHANGELOG.md) per ciò che è stato consegnato esattamente, e la Roadmap sotto per ciò che resta da fare.
 
 * 🧮 **Jacobiana e cinematica inversa (reali, cinematica pura):** `jacobian --urdf PATH --target JOINT --joints "..."` stampa la jacobiana geometrica 6 x N del sistema di un giunto nel sistema mondo (testo o `--json`; un giunto che ne segue un altro tramite `<mimic>` aggiunge la sua parte alla colonna del suo principale), e `ik --urdf PATH --target JOINT --goal X,Y,Z` risolve la posizione ai minimi quadrati smorzati con passi limitati e posizioni mantenute entro i limiti dei giunti (`--tolerance`, `--damping`, `--max-step` e `--max-iterations` hanno valori predefiniti). La jacobiana è provata contro differenze finite della cinematica diretta; un obiettivo fuori portata è un errore, non una posa. Un UR5e e un Franka Emika Panda, costruiti dai parametri di Denavit-Hartenberg pubblicati, verificano la cinematica diretta. Vedi `docs/CLI_REFERENCE.md`.
+
+* 🚧 **Previsione di collisione con la cinematica diretta (reale, cinematica pura, sovrastima per costruzione):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` dice se un breve elenco di stati dei giunti porta il robot in una zona di un file di zone di HYDRA-UMC-SAFETY-ZONES o contro sé stesso. I bracci sono i segmenti tra i sistemi di riferimento dei giunti con i raggi che dichiari (non ci sono valori predefiniti), divisi in pezzi e sostituiti da sfere che li contengono; i giunti vengono interpolati e campionati con un limite sul movimento tra i campioni, e una zona non viene mai resa più piccola. Codice di uscita `0` libero, `1` contatto previsto, `2` input errato. Due test di proprietà con seme fisso verificano che una zona attorno a un punto che sta davvero dentro un braccio non venga mai data per libera. Non provato con un robot reale. Vedi `docs/COLLISION_PREDICTION.md`.
 
 ## 🧩 Ruolo in HYDRA-UMC
 
@@ -129,7 +131,7 @@ cargo test
 
 ## 🧪 Test
 
-86 test automatici si eseguono con `cargo test`. Non richiedono hardware né nulla al di fuori di questa macchina.
+133 test automatici si eseguono con `cargo test`. Non richiedono hardware né nulla al di fuori di questa macchina.
 
 La CI esegue `HYDRA_UMC_CI=1 python tools/ci_validate.py`, che controlla il manifesto, i documenti, gli otto README e le immagini.
 
@@ -139,7 +141,7 @@ Richiede il toolchain Rust (`cargo`/`rustc`, installabile via [rustup](https://r
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (86 test), poi `cargo build --release`
+./build.sh   # `cargo test` (133 test), poi `cargo build --release`
 ./run.sh     # esegue target/release/hydra-umc-physics-replica, stampa nome + version + ruolo
 ```
 
@@ -197,6 +199,7 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── kinematics.rs                forward_kinematics() reale + forward_kinematics_checked()
 │   ├── limits.rs                    validate_limits() reale
 │   ├── corpus.rs                    Corpus di fixture di limiti, solo per i test
+│   ├── collision.rs                 Previsione del contatto con zone e con sé stesso (sovrastima per costruzione): `predict-collision`
 │   └── main.rs                      Entry point + sottocomandi reali `fk`/`fk-checked`/`validate-limits`
 ├── tests/                           cli_contract.rs e tree_contract.rs: gli errori della riga di comando (giunti scritti male, ripetuti o mancanti) e il posizionamento di rami e giunti mimic
 ├── docs/                            documenti del progetto
