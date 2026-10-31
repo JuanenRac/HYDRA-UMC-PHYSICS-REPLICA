@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.1] - Collision prediction by forward kinematics
+
 - **Collision prediction by forward kinematics.** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH [--base PATH] [--json]` says whether a short list of joint states brings the robot into a protected zone (the zones file of HYDRA-UMC-SAFETY-ZONES: boxes, and oriented boxes, cylinders and capsules when the file switches them on) or into itself. The robot is the segments between its joint frames with the radii the configuration declares (there are no defaults for the sizes of the robot), cut into pieces and replaced by spheres that contain them; the joints are interpolated between the states and sampled with a bound on how far a point can move between samples, added to the margin; the distances are reduced by a nanometre. Everything over-estimates, nothing under-estimates: two seeded property tests check that a zone around a point that really lies inside a link is never reported clear, also between two coarse samples. Exit `0` clear, `1` contact predicted, `2` bad input. Not tried with a real robot; see `docs/COLLISION_PREDICTION.md` for the model, the assumptions and the limits. `serde_json` is now a dependency.
 
 ## [0.1.0] - Jacobian and inverse kinematics tested against two real arms, the test count out of the manifest notes and the universal README
