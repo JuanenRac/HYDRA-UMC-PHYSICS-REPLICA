@@ -77,7 +77,7 @@ Le unità sono quelle di URDF (metri e radianti). `fk` stampa la posizione di og
 
 ## 🧩 Ruolo in HYDRA-UMC
 
-**HYDRA-UMC-PHYSICS-REPLICA** è il modulo di cinematica del gemello digitale: legge un albero URDF, calcola la posa di ogni giunto (cinematica diretta) e verifica le posizioni dei giunti rispetto ai loro limiti. Non simula la dinamica: non c'è un modello di contatto, di attrito o di corpo rigido.
+**HYDRA-UMC-PHYSICS-REPLICA** è il modulo di cinematica del gemello digitale: legge un albero URDF, calcola la posa di ogni giunto (cinematica diretta) e verifica le posizioni dei giunti rispetto ai loro limiti. Non simula la dinamica: non c'è un modello di contatto, di attrito o di corpo rigido. Il comando facoltativo `serve` avvia un piccolo server HTTP (spento salvo richiesta, solo loopback per impostazione predefinita, token facoltativo) che risponde soltanto a `GET /health` e `GET /metrics` con numeri sul servizio; non calcola nulla.
 
 ## 🏛️ Architettura
 

@@ -77,7 +77,7 @@ Les unités sont celles d'URDF (mètres et radians). `fk` affiche la position de
 
 ## 🧩 Rôle dans HYDRA-UMC
 
-**HYDRA-UMC-PHYSICS-REPLICA** est le module de cinématique du jumeau numérique : il lit un arbre URDF, calcule la pose de chaque articulation (cinématique directe) et vérifie les positions des articulations par rapport à leurs limites. Il ne simule pas la dynamique : il n'y a ni modèle de contact, ni de frottement, ni de corps rigide.
+**HYDRA-UMC-PHYSICS-REPLICA** est le module de cinématique du jumeau numérique : il lit un arbre URDF, calcule la pose de chaque articulation (cinématique directe) et vérifie les positions des articulations par rapport à leurs limites. Il ne simule pas la dynamique : il n'y a ni modèle de contact, ni de frottement, ni de corps rigide. La commande facultative `serve` démarre un petit serveur HTTP (désactivé sauf demande, en loopback seulement par défaut, jeton facultatif) qui ne répond qu'à `GET /health` et `GET /metrics` avec des chiffres sur le service ; il ne calcule rien.
 
 ## 🏛️ Architecture
 

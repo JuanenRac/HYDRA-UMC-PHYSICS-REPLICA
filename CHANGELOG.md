@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **An optional HTTP listener with `GET /health` and `GET /metrics`:** `serve [--addr HOST:PORT] [--token TOKEN] [--allow-anonymous]` (the token can also come from `PHYSICS_REPLICA_TOKEN`). It is off unless the command is given, listens on `127.0.0.1:8118` by default, refuses another address without a token (unless `--allow-anonymous`) and answers only those two routes: liveness, open, and the numbers of the service in the text format of Prometheus (the version, the uptime, the responses by class of status and the health), behind the token when one is set (`401` without it). It computes nothing and never publishes a URDF, a pose or a token. The metrics code is the canonical `service_metrics.rs` of HYDRA-UMC-SDK, copied byte for byte; the only new dependency is `tiny_http`.
+
 - **The documentation no longer gives the twin a frame rate.** The twin draws nothing; the paragraph on why this module is a sibling now speaks of the requests the twin answers.
 ## [0.1.1] - Collision prediction by forward kinematics
 

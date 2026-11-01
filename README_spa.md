@@ -77,7 +77,7 @@ Las unidades son las de URDF (metros y radianes). `fk` imprime la posición de c
 
 ## 🧩 Papel en HYDRA-UMC
 
-**HYDRA-UMC-PHYSICS-REPLICA** es el módulo de cinemática del gemelo digital: lee un árbol URDF, calcula la pose de cada articulación (cinemática directa) y comprueba las posiciones de las articulaciones contra sus límites. No simula dinámica: no hay modelo de contacto, de fricción ni de cuerpo rígido.
+**HYDRA-UMC-PHYSICS-REPLICA** es el módulo de cinemática del gemelo digital: lee un árbol URDF, calcula la pose de cada articulación (cinemática directa) y comprueba las posiciones de las articulaciones contra sus límites. No simula dinámica: no hay modelo de contacto, de fricción ni de cuerpo rígido. El comando opcional `serve` arranca un pequeño servidor HTTP (apagado salvo que se pida, solo en loopback por defecto, token opcional) que responde únicamente a `GET /health` y `GET /metrics` con números del propio servicio; no calcula nada.
 
 ## 🏛️ Arquitectura
 

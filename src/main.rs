@@ -21,6 +21,8 @@ mod corpus;
 mod jacobian;
 mod kinematics;
 mod limits;
+mod server;
+mod service_metrics;
 mod transform;
 mod urdf;
 
@@ -688,6 +690,8 @@ fn main() -> ExitCode {
         Some("jacobian") => run_jacobian(&args[1..]),
         Some("ik") => run_ik(&args[1..]),
         Some("predict-collision") => run_predict_collision(&args[1..]),
+        // the only way the program listens on a network; never started without being asked for
+        Some("serve") => server::serve_command(&args[1..]),
         _ => {
             println!("{PROJECT_NAME} v{VERSION}");
             println!("{ROLE}");
