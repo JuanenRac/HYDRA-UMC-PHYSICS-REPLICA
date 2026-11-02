@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 | バージョン | `0.1.2` |
 | 成熟度 | 機能する |
 | テスト | 141 (`cargo test`) |
-| 技術 | Rust / roxmltree / URDF forward kinematics |
+| 技術 | Rust / roxmltree / URDF forward kinematics / Inverse dynamics (RNEA) / Capsule self-collision |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
 
 **移動：** [概要](#-概要) · [アーキテクチャ](#-アーキテクチャ) · [クイックスタート](#-クイックスタート) · [テスト](#-テスト) · [リポジトリの構成](#-リポジトリの構成) · [関連プロジェクト](#-関連プロジェクト)
@@ -59,7 +59,7 @@ GPL-3.0-or-later - see LICENSE
 
 ## 🎯 概要
 
-**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF の運動学ツリー（シリアルアームと、グリッパーのような分岐するもの）を読み込み、各関節の姿勢（順運動学）を計算し、関節位置をそのリミットと照合します。動力学はシミュレートしません。剛体・接触・摩擦のモデルも MuJoCo や PhysX もなく、それらはロードマップです。
+**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF の運動学ツリー（シリアルアームと、グリッパーのような分岐するもの）を読み込み、各関節の姿勢（順運動学）を計算し、関節位置をそのリミットと照合します。接触や摩擦はシミュレートせず、独自の物理エンジンも持ちません。`<inertial>` ブロックから動作に必要な関節トルクを計算し（逆動力学、RNEA）、MuJoCo は既定で無効な Cargo フィーチャーの背後にある任意のブリッジにすぎません。
 
 単位は URDF のもの（メートルとラジアン）です。`fk` は各関節の位置を出力し、`--json` を付けると位置と単位クォータニオンの回転を出力します。
 
@@ -77,11 +77,15 @@ GPL-3.0-or-later - see LICENSE
 
 * 🚧 **順運動学による衝突予測（実装済み・純粋な運動学・構造上、過大に見積もる）：** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` は、関節状態の短いリストによって、ロボットが HYDRA-UMC-SAFETY-ZONES のゾーンファイルのゾーンに入るか、自分自身に接触するかを答えます。リンクは、宣言した半径（既定値はありません）を持つ関節座標系間の線分で、小片に分割して、それを含む球に置き換えます。関節は補間され、サンプル間の動きの上限を付けてサンプリングされ、ゾーンが小さくされることはありません。終了コードは `0` が接触なし、`1` が接触予測、`2` が入力エラーです。シード固定の性質テスト 2 件で、実際にリンクの内側にある点の周りのゾーンが「接触なし」と報告されないことを確認しています。実機では未検証です。`docs/COLLISION_PREDICTION.md` を参照してください。
 
+* 🌐 **HTTP サービス（`serve --urdf`、指定しない限り無効）：** `POST /fk`、`/ik`、`/check-trajectory`、`/inverse-dynamics`、`GET|POST /capsules` は、起動時に渡された URDF について応答します。既定ではループバックのみで、他のアドレスで待ち受けるにはトークンが必要です。リクエストの大きさと 1 回あたりの計算量には上限があり、リクエスト内の URDF は設定で許可しない限り拒否され、制限と許容値は設定ファイルにあります。`/check-trajectory` は、サンプリングされた軌道をハードウェアブリッジへ送る前に、位置・速度・加速度（設定から）・力/トルク・自己衝突について検証し、実行できなかったチェックがあれば `complete` で知らせます。応答の固定文は 8 言語で用意されています。実機では未検証です。`docs/SERVICE_API.md` を参照してください。
+
+* 🧲 **カプセルによる自己衝突、逆動力学、MuJoCo（実装済み、重要な点では過大評価側）：** `capsules`、`self-collision`、`inverse-dynamics`、`mjcf`、`check-trajectory`。`<collision>` の球・円柱・直方体はそれぞれを包むカプセルに置き換えられます（メッシュには宣言された半径が必要です）。再帰ニュートン・オイラー法は `<inertial>` ブロックと重力からトルクを求め、閉形式の式、エネルギー収支、そして MuJoCo 自身の逆動力学と照合されています。`mjcf` は URDF を MuJoCo のモデル形式で書き出します。任意のブリッジ（`--features mujoco`）は既定で無効です。実機では未検証です。`docs/DYNAMICS_AND_COLLISION.md` を参照してください。
+
 **共通の基準 URDF セット。** `tests/golden/` には、HYDRA-UMC-EDITOR-URDF と HYDRA-UMC-EDITOR-STL が検査するものと同じ小さなロボットと、単純な数学の基準で求めた関節フレームの期待位置が入っています。`tests/golden_urdf.rs` が各ケースで `fk` を実行するため、3 つとも `origin`、`rpy`、`axis`、関節の種類を同じように読みます。ファイルはコピーで、HYDRA-UMC-EDITOR-URDF の `tools/golden_sync.py` が同一に保ちます。
 
 ## 🧩 HYDRA-UMC での役割
 
-**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF のツリーを読み、各関節の姿勢を計算し（順運動学）、関節の位置を制限に照らして検証します。動力学のシミュレーションは行わず、接触、摩擦、剛体のモデルはありません。 任意の `serve` コマンドは小さな HTTP リスナーを起動します（指定しない限り無効、既定ではループバックのみ、トークンは任意）。応答するのは `GET /health` と、サービス自体の数値を返す `GET /metrics` だけで、計算は行いません。
+**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF のツリーを読み、各関節の姿勢を計算し（順運動学）、関節の位置を制限に照らして検証し、慣性データから関節トルクを推定します（逆動力学）。接触、摩擦、剛体の世界はシミュレートしません。 任意の `serve` コマンドは小さな HTTP リスナーを起動します（指定しない限り無効、既定ではループバックのみ、トークンは任意）。`GET /health` と `GET /metrics` に応答し、`--urdf` で URDF を渡した場合は、そのロボットについて `POST /fk`、`/ik`、`/check-trajectory`、`/inverse-dynamics` にも応答します。
 
 ## 🏛️ アーキテクチャ
 
@@ -211,6 +215,14 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs                    実際の validate_limits()
 │   ├── corpus.rs                    テスト専用の可動域フィクスチャコーパス
 │   ├── collision.rs                 ゾーンと自己への接触の予測（構造上、過大に見積もる）：`predict-collision`
+│   ├── links.rs                     リンクの形状と質量
+│   ├── selfcollision.rs             <collision> のカプセルによる自己衝突
+│   ├── dynamics.rs                  <inertial> からの逆動力学（RNEA）
+│   ├── mjcf.rs                      MuJoCo MJCF として書き出した URDF
+│   ├── mujoco_bridge.rs             任意の MuJoCo ブリッジ（Cargo フィーチャー、既定で無効）
+│   ├── trajectory.rs                サンプリングされた軌道を制限に照らして検証
+│   ├── service_api.rs               serve の計算ルート：/fk /ik /check-trajectory
+│   ├── messages.rs                  サービスの固定文（8 言語）
 │   └── main.rs                      エントリポイント + 実際の `fk`/`fk-checked`/`validate-limits` サブコマンド
 ├── tests/                           cli_contract.rs と tree_contract.rs: コマンドラインのエラー (綴り違い・重複・欠落した関節) と、枝および mimic 関節の配置
 ├── docs/                            プロジェクトの文書

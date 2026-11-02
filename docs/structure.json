@@ -157,6 +157,190 @@
           }
         },
         {
+          "name": "links.rs",
+          "desc": {
+            "en": "Shapes and masses of the links",
+            "es": "Formas y masas de los eslabones",
+            "de": "Formen und Massen der Glieder",
+            "fr": "Formes et masses des segments",
+            "it": "Forme e masse dei membri",
+            "ja": "リンクの形状と質量",
+            "zh": "连杆的形状与质量",
+            "pt": "Formas e massas dos elos"
+          },
+          "tree_desc": {
+            "en": "Shapes and masses of the links",
+            "es": "Formas y masas de los eslabones",
+            "de": "Formen und Massen der Glieder",
+            "fr": "Formes et masses des segments",
+            "it": "Forme e masse dei membri",
+            "ja": "リンクの形状と質量",
+            "zh": "连杆的形状与质量",
+            "pt": "Formas e massas dos elos"
+          }
+        },
+        {
+          "name": "selfcollision.rs",
+          "desc": {
+            "en": "Self-collision with capsules from <collision>",
+            "es": "Autocolisión con cápsulas desde <collision>",
+            "de": "Selbstkollision mit Kapseln aus <collision>",
+            "fr": "Auto-collision par capsules depuis <collision>",
+            "it": "Autocollisione con capsule da <collision>",
+            "ja": "<collision> のカプセルによる自己衝突",
+            "zh": "基于 <collision> 胶囊体的自碰撞",
+            "pt": "Autocolisão com cápsulas a partir de <collision>"
+          },
+          "tree_desc": {
+            "en": "Self-collision with capsules from <collision>",
+            "es": "Autocolisión con cápsulas desde <collision>",
+            "de": "Selbstkollision mit Kapseln aus <collision>",
+            "fr": "Auto-collision par capsules depuis <collision>",
+            "it": "Autocollisione con capsule da <collision>",
+            "ja": "<collision> のカプセルによる自己衝突",
+            "zh": "基于 <collision> 胶囊体的自碰撞",
+            "pt": "Autocolisão com cápsulas a partir de <collision>"
+          }
+        },
+        {
+          "name": "dynamics.rs",
+          "desc": {
+            "en": "Inverse dynamics (RNEA) from <inertial>",
+            "es": "Dinámica inversa (RNEA) desde <inertial>",
+            "de": "Inverse Dynamik (RNEA) aus <inertial>",
+            "fr": "Dynamique inverse (RNEA) depuis <inertial>",
+            "it": "Dinamica inversa (RNEA) da <inertial>",
+            "ja": "<inertial> からの逆動力学（RNEA）",
+            "zh": "基于 <inertial> 的逆动力学（RNEA）",
+            "pt": "Dinâmica inversa (RNEA) a partir de <inertial>"
+          },
+          "tree_desc": {
+            "en": "Inverse dynamics (RNEA) from <inertial>",
+            "es": "Dinámica inversa (RNEA) desde <inertial>",
+            "de": "Inverse Dynamik (RNEA) aus <inertial>",
+            "fr": "Dynamique inverse (RNEA) depuis <inertial>",
+            "it": "Dinamica inversa (RNEA) da <inertial>",
+            "ja": "<inertial> からの逆動力学（RNEA）",
+            "zh": "基于 <inertial> 的逆动力学（RNEA）",
+            "pt": "Dinâmica inversa (RNEA) a partir de <inertial>"
+          }
+        },
+        {
+          "name": "mjcf.rs",
+          "desc": {
+            "en": "The URDF written as MuJoCo MJCF",
+            "es": "El URDF escrito como MJCF de MuJoCo",
+            "de": "Das URDF als MuJoCo-MJCF geschrieben",
+            "fr": "L'URDF écrit en MJCF de MuJoCo",
+            "it": "L'URDF scritto come MJCF di MuJoCo",
+            "ja": "MuJoCo MJCF として書き出した URDF",
+            "zh": "写成 MuJoCo MJCF 的 URDF",
+            "pt": "O URDF escrito como MJCF do MuJoCo"
+          },
+          "tree_desc": {
+            "en": "The URDF written as MuJoCo MJCF",
+            "es": "El URDF escrito como MJCF de MuJoCo",
+            "de": "Das URDF als MuJoCo-MJCF geschrieben",
+            "fr": "L'URDF écrit en MJCF de MuJoCo",
+            "it": "L'URDF scritto come MJCF di MuJoCo",
+            "ja": "MuJoCo MJCF として書き出した URDF",
+            "zh": "写成 MuJoCo MJCF 的 URDF",
+            "pt": "O URDF escrito como MJCF do MuJoCo"
+          }
+        },
+        {
+          "name": "mujoco_bridge.rs",
+          "desc": {
+            "en": "Optional MuJoCo bridge (Cargo feature, off by default)",
+            "es": "Puente opcional con MuJoCo (feature de Cargo, apagada por defecto)",
+            "de": "Optionale MuJoCo-Brücke (Cargo-Feature, standardmäßig aus)",
+            "fr": "Pont facultatif vers MuJoCo (feature Cargo, désactivée par défaut)",
+            "it": "Ponte facoltativo con MuJoCo (feature di Cargo, spenta per impostazione predefinita)",
+            "ja": "任意の MuJoCo ブリッジ（Cargo フィーチャー、既定で無効）",
+            "zh": "可选的 MuJoCo 桥接（Cargo 特性，默认关闭）",
+            "pt": "Ponte opcional com o MuJoCo (funcionalidade do Cargo, desligada por predefinição)"
+          },
+          "tree_desc": {
+            "en": "Optional MuJoCo bridge (Cargo feature, off by default)",
+            "es": "Puente opcional con MuJoCo (feature de Cargo, apagada por defecto)",
+            "de": "Optionale MuJoCo-Brücke (Cargo-Feature, standardmäßig aus)",
+            "fr": "Pont facultatif vers MuJoCo (feature Cargo, désactivée par défaut)",
+            "it": "Ponte facoltativo con MuJoCo (feature di Cargo, spenta per impostazione predefinita)",
+            "ja": "任意の MuJoCo ブリッジ（Cargo フィーチャー、既定で無効）",
+            "zh": "可选的 MuJoCo 桥接（Cargo 特性，默认关闭）",
+            "pt": "Ponte opcional com o MuJoCo (funcionalidade do Cargo, desligada por predefinição)"
+          }
+        },
+        {
+          "name": "trajectory.rs",
+          "desc": {
+            "en": "Checks a sampled trajectory against the limits",
+            "es": "Comprueba una trayectoria muestreada contra los límites",
+            "de": "Prüft eine abgetastete Trajektorie gegen die Grenzen",
+            "fr": "Vérifie une trajectoire échantillonnée contre les limites",
+            "it": "Verifica una traiettoria campionata rispetto ai limiti",
+            "ja": "サンプリングされた軌道を制限に照らして検証",
+            "zh": "对照限值检查采样轨迹",
+            "pt": "Verifica uma trajetória amostrada contra os limites"
+          },
+          "tree_desc": {
+            "en": "Checks a sampled trajectory against the limits",
+            "es": "Comprueba una trayectoria muestreada contra los límites",
+            "de": "Prüft eine abgetastete Trajektorie gegen die Grenzen",
+            "fr": "Vérifie une trajectoire échantillonnée contre les limites",
+            "it": "Verifica una traiettoria campionata rispetto ai limiti",
+            "ja": "サンプリングされた軌道を制限に照らして検証",
+            "zh": "对照限值检查采样轨迹",
+            "pt": "Verifica uma trajetória amostrada contra os limites"
+          }
+        },
+        {
+          "name": "service_api.rs",
+          "desc": {
+            "en": "Computing routes of serve: /fk /ik /check-trajectory",
+            "es": "Rutas de cálculo de serve: /fk /ik /check-trajectory",
+            "de": "Rechenrouten von serve: /fk /ik /check-trajectory",
+            "fr": "Routes de calcul de serve : /fk /ik /check-trajectory",
+            "it": "Rotte di calcolo di serve: /fk /ik /check-trajectory",
+            "ja": "serve の計算ルート：/fk /ik /check-trajectory",
+            "zh": "serve 的计算路由：/fk /ik /check-trajectory",
+            "pt": "Rotas de cálculo do serve: /fk /ik /check-trajectory"
+          },
+          "tree_desc": {
+            "en": "Computing routes of serve: /fk /ik /check-trajectory",
+            "es": "Rutas de cálculo de serve: /fk /ik /check-trajectory",
+            "de": "Rechenrouten von serve: /fk /ik /check-trajectory",
+            "fr": "Routes de calcul de serve : /fk /ik /check-trajectory",
+            "it": "Rotte di calcolo di serve: /fk /ik /check-trajectory",
+            "ja": "serve の計算ルート：/fk /ik /check-trajectory",
+            "zh": "serve 的计算路由：/fk /ik /check-trajectory",
+            "pt": "Rotas de cálculo do serve: /fk /ik /check-trajectory"
+          }
+        },
+        {
+          "name": "messages.rs",
+          "desc": {
+            "en": "Fixed sentences of the service in eight languages",
+            "es": "Frases fijas del servicio en ocho idiomas",
+            "de": "Feste Sätze des Dienstes in acht Sprachen",
+            "fr": "Phrases fixes du service en huit langues",
+            "it": "Frasi fisse del servizio in otto lingue",
+            "ja": "サービスの固定文（8 言語）",
+            "zh": "服务的固定语句（八种语言）",
+            "pt": "Frases fixas do serviço em oito idiomas"
+          },
+          "tree_desc": {
+            "en": "Fixed sentences of the service in eight languages",
+            "es": "Frases fijas del servicio en ocho idiomas",
+            "de": "Feste Sätze des Dienstes in acht Sprachen",
+            "fr": "Phrases fixes du service en huit langues",
+            "it": "Frasi fisse del servizio in otto lingue",
+            "ja": "サービスの固定文（8 言語）",
+            "zh": "服务的固定语句（八种语言）",
+            "pt": "Frases fixas do serviço em oito idiomas"
+          }
+        },
+        {
           "name": "main.rs",
           "desc": {
             "en": "Entry point + real",

@@ -111,5 +111,5 @@
       "label": "reads"
     }
   ],
-  "footer": "Kinematics only; there is no dynamics model."
+  "footer": "Kinematics, inverse dynamics and capsule self-collision; no contact simulation."
 }

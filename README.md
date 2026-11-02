@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 | Version | `0.1.2` |
 | Maturity | Functional |
 | Tests | 141 (`cargo test`) |
-| Stack | Rust / roxmltree / URDF forward kinematics |
+| Stack | Rust / roxmltree / URDF forward kinematics / Inverse dynamics (RNEA) / Capsule self-collision |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
 
 **Jump to:** [Overview](#-overview) · [Architecture](#-architecture) · [Quick start](#-quick-start) · [Testing](#-testing) · [Repository Structure](#-repository-structure) · [Related Projects](#-related-projects)
@@ -59,7 +59,7 @@ Each line is one part of this repository and the light says how far it is today.
 
 ## 🎯 Overview
 
-**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the Digital Twin: it reads a URDF kinematic tree (serial arms and branching ones such as a gripper), computes the pose of every joint (forward kinematics) and checks joint positions against their limits. It does not simulate dynamics: there is no rigid-body, contact or friction model and no MuJoCo or PhysX; those are the roadmap.
+**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the Digital Twin: it reads a URDF kinematic tree (serial arms and branching ones such as a gripper), computes the pose of every joint (forward kinematics) and checks joint positions against their limits. It does not simulate contact or friction and has no physics engine of its own: it computes the joint torques of a motion from the `<inertial>` blocks (inverse dynamics, RNEA), and MuJoCo is only an optional bridge behind a Cargo feature that is off by default.
 
 Units are those of URDF (metres and radians). `fk` prints the position of each joint; with `--json` it prints the position and the rotation as a unit quaternion.
 
@@ -77,11 +77,15 @@ Units are those of URDF (metres and radians). `fk` prints the position of each j
 
 * 🚧 **Collision prediction by forward kinematics (real, pure kinematics, over-estimates by construction):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` says whether a short list of joint states brings the robot into a zone of a HYDRA-UMC-SAFETY-ZONES zones file or into itself. The links are the segments between the joint frames with the radii you declare (there are no defaults), cut into pieces and replaced by spheres that contain them; the joints are interpolated and sampled with a bound on the motion between samples, and a zone is never made smaller. Exit code `0` clear, `1` contact predicted, `2` bad input. Two seeded property tests check that a zone around a point that really lies inside a link is never reported clear. Not tried with a real robot. See `docs/COLLISION_PREDICTION.md`.
 
+* 🌐 **HTTP service (`serve --urdf`, off unless asked for):** `POST /fk`, `/ik`, `/check-trajectory`, `/inverse-dynamics` and `GET|POST /capsules` answer for the URDF it was started with. Loopback only by default, a token is required to listen on another address, the size of a request and the work of one are bounded, a URDF inside a request is refused unless the configuration allows it, and the limits and tolerances live in the configuration file. `/check-trajectory` checks a sampled trajectory against position, speed, acceleration (from the configuration), effort and self-collision before it is sent to the hardware bridge, and says when a check could not run (`complete`). The fixed sentences of the answers exist in the eight languages. Not tried with a real robot. See `docs/SERVICE_API.md`.
+
+* 🧲 **Self-collision with capsules, inverse dynamics and MuJoCo (real, over-estimating where it matters):** `capsules`, `self-collision`, `inverse-dynamics`, `mjcf` and `check-trajectory`. Each sphere, cylinder and box of `<collision>` is replaced by a capsule that contains it (a mesh needs a declared radius); the recursive Newton-Euler algorithm gives the torques from the `<inertial>` blocks and gravity and is checked against closed forms, against the energy balance and against the inverse dynamics of MuJoCo itself; `mjcf` writes the URDF in the model format of MuJoCo. The optional bridge (`--features mujoco`) is off by default. Not tried with a real robot. See `docs/DYNAMICS_AND_COLLISION.md`.
+
 **Shared golden URDF set.** `tests/golden/` holds the same small robots and expected joint-frame positions that HYDRA-UMC-EDITOR-URDF and HYDRA-UMC-EDITOR-STL check, worked out by a plain-math reference, and `tests/golden_urdf.rs` runs `fk` over every case, so the three read `origin`, `rpy`, `axis` and the joint types the same way. The files are copies, kept identical by `tools/golden_sync.py` in HYDRA-UMC-EDITOR-URDF.
 
 ## 🧩 Role in HYDRA-UMC
 
-**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the digital twin: it reads a URDF tree, computes the pose of every joint (forward kinematics) and checks joint positions against their limits. It does not simulate dynamics: there is no contact, friction or rigid-body model. The optional `serve` command starts a small HTTP listener (off unless asked for, loopback only by default, token optional) that answers only `GET /health` and `GET /metrics` with numbers about the service; it computes nothing.
+**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the digital twin: it reads a URDF tree, computes the pose of every joint (forward kinematics), checks joint positions against their limits and estimates joint torques from the inertial data (inverse dynamics). It does not simulate contact, friction or a rigid-body world. The optional `serve` command starts a small HTTP listener (off unless asked for, loopback only by default, token optional) that answers `GET /health` and `GET /metrics` and, when given a URDF with `--urdf`, `POST /fk`, `/ik`, `/check-trajectory` and `/inverse-dynamics` for that robot.
 
 ## 🏛️ Architecture
 
@@ -203,6 +207,14 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs                    Real validate_limits()
 │   ├── corpus.rs                    Test-only reusable joint-limit fixture corpus
 │   ├── collision.rs                 Contact prediction against zones and itself (over-estimates by construction): `predict-collision`
+│   ├── links.rs                     Shapes and masses of the links
+│   ├── selfcollision.rs             Self-collision with capsules from <collision>
+│   ├── dynamics.rs                  Inverse dynamics (RNEA) from <inertial>
+│   ├── mjcf.rs                      The URDF written as MuJoCo MJCF
+│   ├── mujoco_bridge.rs             Optional MuJoCo bridge (Cargo feature, off by default)
+│   ├── trajectory.rs                Checks a sampled trajectory against the limits
+│   ├── service_api.rs               Computing routes of serve: /fk /ik /check-trajectory
+│   ├── messages.rs                  Fixed sentences of the service in eight languages
 │   └── main.rs                      Entry point + real `fk`/`fk-checked`/`validate-limits` subcommands
 ├── tests/                           cli_contract.rs and tree_contract.rs: the command-line errors (misspelt, repeated or missing joints) and the placement of branches and mimic joints
 ├── docs/                            documents of the project

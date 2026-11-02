@@ -85,7 +85,7 @@ fn no_arguments_or_an_unknown_command_print_the_identity_and_succeed() {
             "{stdout}"
         );
         assert!(
-            stdout.contains("no dynamics, no physics engine"),
+            stdout.contains("no contact simulation, no physics engine of its own"),
             "{stdout}"
         );
     }

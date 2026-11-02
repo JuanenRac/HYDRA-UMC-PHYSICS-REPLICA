@@ -37,7 +37,7 @@ GPL-3.0-or-later - see LICENSE
 | 版本 | `0.1.2` |
 | 成熟度 | 可用 |
 | 测试 | 141 (`cargo test`) |
-| 技术栈 | Rust / roxmltree / URDF forward kinematics |
+| 技术栈 | Rust / roxmltree / URDF forward kinematics / Inverse dynamics (RNEA) / Capsule self-collision |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
 
 **跳转：** [概述](#-概述) · [架构](#-架构) · [快速开始](#-快速开始) · [测试](#-测试) · [仓库结构](#-仓库结构) · [相关项目](#-相关项目)
@@ -59,7 +59,7 @@ GPL-3.0-or-later - see LICENSE
 
 ## 🎯 概述
 
-**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：它读取 URDF 运动学树（串联臂以及夹爪这类分叉结构），计算每个关节的位姿（正向运动学），并对照关节限位检查关节位置。它不模拟动力学：没有刚体、接触或摩擦模型，也没有 MuJoCo 或 PhysX，这些属于路线图。
+**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：它读取 URDF 运动学树（串联臂以及夹爪这类分叉结构），计算每个关节的位姿（正向运动学），并对照关节限位检查关节位置。它不模拟接触或摩擦，也没有自己的物理引擎：它根据 `<inertial>` 块计算一个运动所需的关节力矩（逆动力学，RNEA），MuJoCo 只是默认关闭的 Cargo 特性之后的可选桥接。
 
 单位遵循 URDF（米和弧度）。`fk` 输出每个关节的位置；加上 `--json` 则输出位置和单位四元数形式的旋转。
 
@@ -77,11 +77,15 @@ GPL-3.0-or-later - see LICENSE
 
 * 🚧 **基于正向运动学的碰撞预测（已实现，纯运动学，按构造偏大估计）：** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` 判断一小段关节状态列表是否会使机器人进入 HYDRA-UMC-SAFETY-ZONES 区域文件中的某个区域，或碰到自身。连杆是各关节坐标系之间的线段，半径由你声明（没有默认值），被切成小段并替换为包含它们的球；关节会被插值并采样，并给出采样间运动的上界，区域绝不会被缩小。退出码 `0` 表示无接触，`1` 表示预测到接触，`2` 表示输入错误。两个固定种子的性质测试检查：在真正位于连杆内部的点周围的区域，绝不会被报告为无接触。尚未在真实机器人上试验。参见 `docs/COLLISION_PREDICTION.md`。
 
+* 🌐 **HTTP 服务（`serve --urdf`，不指定则不启动）：** `POST /fk`、`/ik`、`/check-trajectory`、`/inverse-dynamics` 和 `GET|POST /capsules` 针对启动时给定的 URDF 作答。默认仅回环地址，监听其他地址需要令牌；请求的大小和单次请求的计算量都有上限；请求中携带的 URDF 除非配置允许否则会被拒绝；限值和容差都放在配置文件中。`/check-trajectory` 在把采样轨迹发往硬件桥之前，按位置、速度、加速度（来自配置）、力/力矩和自碰撞进行检查，并在某项检查无法运行时说明（`complete`）。应答中的固定语句提供八种语言。未在真实机器人上试过。参见 `docs/SERVICE_API.md`。
+
+* 🧲 **胶囊体自碰撞、逆动力学与 MuJoCo（已实现，在关键处宁可高估）：** `capsules`、`self-collision`、`inverse-dynamics`、`mjcf` 和 `check-trajectory`。`<collision>` 中的每个球、圆柱和长方体都被一个包住它的胶囊体取代（网格需要声明半径）；递归牛顿-欧拉算法根据 `<inertial>` 块和重力给出力矩，并与闭式公式、能量平衡以及 MuJoCo 自带的逆动力学对照；`mjcf` 把 URDF 写成 MuJoCo 的模型格式。可选桥接（`--features mujoco`）默认关闭。未在真实机器人上试过。参见 `docs/DYNAMICS_AND_COLLISION.md`。
+
 **共用的基准 URDF 集。** `tests/golden/` 中是与 HYDRA-UMC-EDITOR-URDF、HYDRA-UMC-EDITOR-STL 检查的相同的小型机器人和各关节坐标系的预期位置，由只用简单数学的基准算出；`tests/golden_urdf.rs` 对每个用例运行 `fk`，因此三者读取 `origin`、`rpy`、`axis` 和关节类型的方式一致。这些文件是副本，由 HYDRA-UMC-EDITOR-URDF 的 `tools/golden_sync.py` 保持一致。
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
-**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：读取 URDF 树，计算每个关节的位姿（正向运动学），并对照限位检查关节位置。它不模拟动力学：没有接触、摩擦或刚体模型。 可选的 `serve` 命令会启动一个小型 HTTP 监听器（不指定则不启动，默认仅回环地址，令牌可选），只响应 `GET /health` 和返回服务自身数字的 `GET /metrics`，不做任何计算。
+**HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：读取 URDF 树，计算每个关节的位姿（正向运动学），对照限位检查关节位置，并根据惯性数据估算关节力矩（逆动力学）。它不模拟接触、摩擦或刚体世界。 可选的 `serve` 命令会启动一个小型 HTTP 监听器（不指定则不启动，默认仅回环地址，令牌可选），响应 `GET /health` 和 `GET /metrics`；若用 `--urdf` 给定 URDF，还会针对该机器人响应 `POST /fk`、`/ik`、`/check-trajectory` 和 `/inverse-dynamics`。
 
 ## 🏛️ 架构
 
@@ -209,6 +213,14 @@ HYDRA-UMC-PHYSICS-REPLICA/
 │   ├── limits.rs                    真实的 validate_limits()
 │   ├── corpus.rs                    仅用于测试的限位 fixture 语料库
 │   ├── collision.rs                 与区域及自身接触的预测（按构造偏大估计）：`predict-collision`
+│   ├── links.rs                     连杆的形状与质量
+│   ├── selfcollision.rs             基于 <collision> 胶囊体的自碰撞
+│   ├── dynamics.rs                  基于 <inertial> 的逆动力学（RNEA）
+│   ├── mjcf.rs                      写成 MuJoCo MJCF 的 URDF
+│   ├── mujoco_bridge.rs             可选的 MuJoCo 桥接（Cargo 特性，默认关闭）
+│   ├── trajectory.rs                对照限值检查采样轨迹
+│   ├── service_api.rs               serve 的计算路由：/fk /ik /check-trajectory
+│   ├── messages.rs                  服务的固定语句（八种语言）
 │   └── main.rs                      入口点 + 真实的 `fk`/`fk-checked`/`validate-limits` 子命令
 ├── tests/                           cli_contract.rs 和 tree_contract.rs: 命令行错误 (关节拼写错误、重复或缺失) 以及分支与 mimic 关节的放置
 ├── docs/                            项目文档

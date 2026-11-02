@@ -95,6 +95,10 @@ pub struct Model {
     pub parents: Vec<Option<usize>>,
     /// Index-aligned with `chain.joints`.
     pub extras: Vec<JointExtras>,
+    /// Index-aligned with `chain.joints`: the name of the link each joint carries (its `<child>`).
+    pub child_links: Vec<String>,
+    /// What the file says about each link by name: the `<collision>` shapes and the `<inertial>` block.
+    pub links: std::collections::HashMap<String, crate::links::LinkInfo>,
 }
 
 #[allow(dead_code)]
@@ -619,6 +623,8 @@ pub fn parse_urdf_model(xml: &str) -> Result<Model, UrdfError> {
                 .to_string(),
             parents: Vec::new(),
             extras: Vec::new(),
+            child_links: Vec::new(),
+            links: link_infos(robot),
         });
     }
 
@@ -699,7 +705,24 @@ pub fn parse_urdf_model(xml: &str) -> Result<Model, UrdfError> {
         root_link: root.to_string(),
         parents,
         extras,
+        child_links: order
+            .iter()
+            .map(|&i| parsed[i].child_link.clone())
+            .collect(),
+        links: link_infos(robot),
     })
+}
+
+/// The `<collision>` and `<inertial>` of every `<link>` that is a direct child of `<robot>`.
+fn link_infos(robot: roxmltree::Node) -> std::collections::HashMap<String, crate::links::LinkInfo> {
+    robot
+        .children()
+        .filter(|n| n.has_tag_name("link"))
+        .filter_map(|n| {
+            n.attribute("name")
+                .map(|name| (name.to_string(), crate::links::parse_link(n)))
+        })
+        .collect()
 }
 
 /// A mimic must follow a joint that exists, is not itself, can move, and the followers must not follow each other in a circle.

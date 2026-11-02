@@ -28,7 +28,7 @@ Bare invocation (no arguments) prints identity/version/role and exits `0`:
 ```
 $ hydra-umc-physics-replica
 HYDRA-UMC-PHYSICS-REPLICA v0.0.7
-URDF forward kinematics and joint-limit validation for kinematic trees (no dynamics, no physics engine).
+URDF forward kinematics, joint-limit validation and inverse dynamics for kinematic trees (no contact simulation, no physics engine of its own).
 ```
 
 ## Reader rules
@@ -220,6 +220,25 @@ Inverse kinematics of the position of the frame of `JOINT` (the goal in metres, 
 
 Does this short list of states bring the robot into a protected zone, or into itself? The robot is reduced to the segments between its joint frames with the radii of `--config`, the zones are the ones of a zones file of HYDRA-UMC-SAFETY-ZONES, the joints are interpolated between the states and sampled, and every step goes in the direction that over-estimates. `--config` has no defaults for the sizes of the robot (`link_radius_m` and `tool_extent_m` are required); `--base` gives a state the joints it leaves out. With `--json` it prints one object (`collision`, `level`, `self_collision`, `hits`, `min_clearance_m`, ...), otherwise a summary line and the contacts. Exit code `0`: no contact predicted; `1`: a contact is predicted; `2`: the input is wrong and nothing is printed on the standard output. The model, its assumptions and what it does not cover are in `docs/COLLISION_PREDICTION.md`. Not tried with a real robot.
 
+## Self-collision, inverse dynamics, MJCF and the trajectory check
+
+```
+capsules          --urdf ROBOT.urdf [--config COLLISION.json]
+self-collision    --urdf ROBOT.urdf --trajectory STATES.json [--config COLLISION.json] [--json]
+inverse-dynamics  --urdf ROBOT.urdf --joints "..." --velocities "..." --accelerations "..." [--gravity X,Y,Z] [--allow-missing-inertial] [--json]
+mjcf              --urdf ROBOT.urdf [--out ROBOT.xml]
+check-trajectory  --urdf ROBOT.urdf --samples SAMPLES.json [--config SERVICE.json]
+mujoco-check      --urdf ROBOT.urdf --joints "..." --velocities "..." --accelerations "..."   (build with --features mujoco)
+mujoco-step       --urdf ROBOT.urdf --joints "..." --velocities "..." [--steps N]             (build with --features mujoco)
+```
+
+`capsules` prints the capsules built from the `<collision>` shapes (JSON, in the frame of each link); `self-collision` says whether a list
+of states brings two links into contact (exit `0` clear, `1` contact, `2` bad input); `inverse-dynamics` prints the torque of each free
+joint (exit `1` when one is over its `<limit effort>`); `mjcf` writes the URDF as MuJoCo's MJCF; `check-trajectory` is the check of
+`POST /check-trajectory` on files (exit `0` within the limits, `1` a limit is broken). The model, the assumptions and the limits are in
+`DYNAMICS_AND_COLLISION.md`; the HTTP routes and the configuration file in `SERVICE_API.md`. `serve` takes `--urdf PATH` and `--config PATH`
+to answer `POST /fk`, `/ik`, `/check-trajectory`, `/inverse-dynamics` and `GET|POST /capsules` for that robot.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -230,11 +249,11 @@ Does this short list of states bring the robot into a protected zone, or into it
 
 ## Not yet wired in
 
-This is a real, deliberately partial URDF reader and kinematics engine, not
-a MuJoCo/PhysX simulation yet — see the module docs at the top of
+This is a real, deliberately partial URDF reader, kinematics engine and inverse-dynamics model, not
+a MuJoCo/PhysX simulation (MuJoCo is an optional bridge behind a Cargo feature, off by default) — see the module docs at the top of
 `src/main.rs` and `src/urdf.rs` for the honest scope: a real `parent`/
 `child` tree walk (branches included, `<mimic>` followers worked out), and no
-actual rigid-body or contact simulation, no orientation goal in the inverse kinematics (position only).
+rigid-body world or contact simulation, no orientation goal in the inverse kinematics (position only).
 
 ## Golden URDF set
 

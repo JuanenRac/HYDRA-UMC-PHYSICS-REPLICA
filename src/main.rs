@@ -18,11 +18,20 @@
 mod collision;
 #[cfg(test)]
 mod corpus;
+mod dynamics;
 mod jacobian;
 mod kinematics;
 mod limits;
+mod links;
+mod messages;
+mod mjcf;
+#[cfg(feature = "mujoco")]
+mod mujoco_bridge;
+mod selfcollision;
 mod server;
+mod service_api;
 mod service_metrics;
+mod trajectory;
 mod transform;
 mod urdf;
 
@@ -38,7 +47,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const ESTIMATE_NOTICE: &str = "note: kinematic estimate from the URDF geometry only - no dynamics, and not calibrated against a physical robot";
 
 const ROLE: &str =
-    "URDF forward kinematics and joint-limit validation for kinematic trees (no dynamics, no physics engine).";
+    "URDF forward kinematics, joint-limit validation and inverse dynamics for kinematic trees (no contact simulation, no physics engine of its own).";
 
 /// Parses `"name=value,name=value"` into a position map. Returns `Err` with
 /// a human-readable reason for the first malformed entry found.
@@ -680,6 +689,363 @@ fn run_predict_collision(args: &[String]) -> ExitCode {
     }
 }
 
+/// Prints an error of `command` and gives the exit status of a wrong input.
+fn fail(command: &str, message: impl std::fmt::Display) -> ExitCode {
+    eprintln!("{command}: {message}");
+    ExitCode::from(2)
+}
+
+/// The `name` of the `<robot>` element, for the MJCF.
+fn robot_name(urdf_path: &str) -> String {
+    fs::read_to_string(urdf_path)
+        .ok()
+        .and_then(|xml| {
+            roxmltree::Document::parse(&xml)
+                .ok()
+                .and_then(|d| d.root_element().attribute("name").map(str::to_string))
+        })
+        .unwrap_or_else(|| "robot".to_string())
+}
+
+/// The `--config` file of the collision commands: the `self-collision` options, or the default ones when the flag is absent.
+fn self_collision_config(args: &[String]) -> Result<selfcollision::Config, String> {
+    if find_flag(args, "--config").is_none() {
+        return Ok(selfcollision::Config::default());
+    }
+    selfcollision::parse_config(&read_json_flag(args, "--config")?)
+}
+
+/// Exit status: 0 no shape of the robot touches another, 1 a contact is predicted, 2 the input is wrong.
+fn run_self_collision(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("self-collision", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("self-collision", e),
+    };
+    let loaded = (|| -> Result<_, String> {
+        let config = self_collision_config(args)?;
+        let states = collision::parse_trajectory(&read_json_flag(args, "--trajectory")?)?;
+        Ok((config, states))
+    })();
+    let (config, states) = match loaded {
+        Ok(v) => v,
+        Err(e) => return fail("self-collision", e),
+    };
+    match selfcollision::check_states(&model, &config, &states) {
+        Ok(report) => {
+            eprintln!("{ESTIMATE_NOTICE}");
+            if has_flag(args, "--json") {
+                println!("{}", report.to_json());
+            } else {
+                println!(
+                    "{}: {} capsule(s), {} pair(s), {} sample(s), smallest clearance {} m, {} contact(s)",
+                    if report.collision() { "COLLISION PREDICTED" } else { "clear" },
+                    report.capsule_count,
+                    report.pairs_compared,
+                    report.samples,
+                    report.min_clearance_m.map_or("-".to_string(), |v| format!("{v:.6}")),
+                    report.hits_total
+                );
+                for hit in &report.hits {
+                    println!(
+                        "  at state {:.3}: {} with {} (clearance {:.6} m)",
+                        hit.at, hit.link_a, hit.link_b, hit.clearance_m
+                    );
+                }
+            }
+            if report.collision() {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
+            }
+        }
+        Err(e) => fail("self-collision", e),
+    }
+}
+
+/// The capsules built from the `<collision>` shapes, as JSON, in the frame of each link.
+fn run_capsules(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("capsules", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("capsules", e),
+    };
+    let config = match self_collision_config(args) {
+        Ok(c) => c,
+        Err(e) => return fail("capsules", e),
+    };
+    match selfcollision::capsules(&model, &config) {
+        Ok(caps) => {
+            println!("{}", selfcollision::capsules_json(&caps));
+            ExitCode::SUCCESS
+        }
+        Err(e) => fail("capsules", e),
+    }
+}
+
+/// Exit status: 0 the torques are within the effort limits, 1 a joint is asked for more than its `<limit effort>`, 2 the input is wrong.
+fn run_inverse_dynamics(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("inverse-dynamics", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("inverse-dynamics", e),
+    };
+    let mut maps = Vec::new();
+    for flag in ["--joints", "--velocities", "--accelerations"] {
+        let map = match parse_joint_positions(&find_flag(args, flag).unwrap_or_default()) {
+            Ok(m) => m,
+            Err(e) => return fail("inverse-dynamics", format!("invalid {flag} value: {e}")),
+        };
+        if let Err(e) = check_joint_names(&model.chain, &map) {
+            return fail("inverse-dynamics", format!("{flag}: {e}"));
+        }
+        maps.push(map);
+    }
+    let mut options = dynamics::Options {
+        allow_missing_inertial: has_flag(args, "--allow-missing-inertial"),
+        ..dynamics::Options::default()
+    };
+    if let Some(text) = find_flag(args, "--gravity") {
+        let parts: Vec<f64> = text
+            .split(',')
+            .filter_map(|v| v.trim().parse::<f64>().ok())
+            .filter(|v| v.is_finite())
+            .collect();
+        if parts.len() != 3 || text.split(',').count() != 3 {
+            return fail(
+                "inverse-dynamics",
+                "--gravity wants three finite numbers: X,Y,Z (m/s^2)",
+            );
+        }
+        options.gravity = [parts[0], parts[1], parts[2]];
+    }
+    match dynamics::inverse_dynamics(&model, &maps[0], &maps[1], &maps[2], &options) {
+        Ok(result) => {
+            eprintln!("note: torques from the <inertial> blocks and gravity only (no friction, no motor inertia); an estimate, not tried with a real robot");
+            let violations = limits::effort_violations(&model, &result.torques);
+            let mut names: Vec<&String> = result.torques.keys().collect();
+            names.sort();
+            if has_flag(args, "--json") {
+                let torques: serde_json::Map<String, serde_json::Value> = names
+                    .iter()
+                    .map(|n| ((*n).clone(), serde_json::json!(result.torques[*n])))
+                    .collect();
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "torques": torques,
+                        "within_effort_limits": violations.is_empty(),
+                        "effort_violations": violations.iter().map(|v| serde_json::json!({"joint": v.joint, "value": v.value, "limit": v.limit})).collect::<Vec<_>>(),
+                        "links_without_inertial": result.without_inertial,
+                    })
+                );
+            } else {
+                for name in names {
+                    println!("{name}={:.9}", result.torques[name]);
+                }
+                for v in &violations {
+                    println!(
+                        "EFFORT VIOLATION: joint '{}' needs {:.6} (limit {:.6})",
+                        v.joint, v.value, v.limit
+                    );
+                }
+                if !result.without_inertial.is_empty() {
+                    eprintln!(
+                        "warning: link(s) {} have no <inertial> and count as massless",
+                        result.without_inertial.join(", ")
+                    );
+                }
+            }
+            if violations.is_empty() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::from(1)
+            }
+        }
+        Err(e) => fail("inverse-dynamics", e),
+    }
+}
+
+/// The URDF written as MJCF (to stdout, or to `--out PATH`); what could not be written is listed on stderr.
+fn run_mjcf(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("mjcf", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("mjcf", e),
+    };
+    match mjcf::to_mjcf(&model, &robot_name(&urdf_path)) {
+        Ok(out) => {
+            for w in &out.warnings {
+                eprintln!("warning: {w}");
+            }
+            match find_flag(args, "--out") {
+                Some(path) => {
+                    if let Err(e) = fs::write(&path, &out.xml) {
+                        return fail("mjcf", format!("could not write '{path}': {e}"));
+                    }
+                    ExitCode::SUCCESS
+                }
+                None => {
+                    print!("{}", out.xml);
+                    ExitCode::SUCCESS
+                }
+            }
+        }
+        Err(e) => fail("mjcf", e),
+    }
+}
+
+/// The same check as `POST /check-trajectory`, on a file. Exit status: 0 within the limits, 1 a limit is broken, 2 the input is wrong.
+/// The `--config` file is the one of `serve --config`.
+fn run_check_trajectory(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("check-trajectory", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("check-trajectory", e),
+    };
+    let loaded = (|| -> Result<_, String> {
+        let config = if find_flag(args, "--config").is_some() {
+            service_api::parse_config(&read_json_flag(args, "--config")?)?
+        } else {
+            service_api::ServiceConfig::default()
+        };
+        let samples =
+            trajectory::parse_samples(&read_json_flag(args, "--samples")?, config.max_samples)?;
+        Ok((config, samples))
+    })();
+    let (config, samples) = match loaded {
+        Ok(v) => v,
+        Err(e) => return fail("check-trajectory", e),
+    };
+    match trajectory::check(&model, &config.trajectory, &samples) {
+        Ok(outcome) => {
+            eprintln!("{ESTIMATE_NOTICE}");
+            println!("{}", outcome.to_json());
+            if outcome.ok {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::from(1)
+            }
+        }
+        Err(e) => fail("check-trajectory", e),
+    }
+}
+
+/// With the `mujoco` feature: the torques of the RNEA next to those of MuJoCo's inverse dynamics, and the largest difference.
+#[cfg(feature = "mujoco")]
+fn run_mujoco_check(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("mujoco-check", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("mujoco-check", e),
+    };
+    let mut maps = Vec::new();
+    for flag in ["--joints", "--velocities", "--accelerations"] {
+        match parse_joint_positions(&find_flag(args, flag).unwrap_or_default()) {
+            Ok(m) => maps.push(m),
+            Err(e) => return fail("mujoco-check", format!("invalid {flag} value: {e}")),
+        }
+    }
+    let ours = match dynamics::inverse_dynamics(
+        &model,
+        &maps[0],
+        &maps[1],
+        &maps[2],
+        &dynamics::Options::default(),
+    ) {
+        Ok(t) => t.torques,
+        Err(e) => return fail("mujoco-check", e),
+    };
+    let theirs = match mujoco_bridge::mujoco_inverse(
+        &model,
+        &robot_name(&urdf_path),
+        &maps[0],
+        &maps[1],
+        &maps[2],
+    ) {
+        Ok(t) => t,
+        Err(e) => return fail("mujoco-check", e),
+    };
+    let mut names: Vec<&String> = ours.keys().collect();
+    names.sort();
+    let mut worst = 0.0f64;
+    for name in names {
+        let other = theirs.get(name).copied().unwrap_or(f64::NAN);
+        worst = worst.max((ours[name] - other).abs());
+        println!("{name}: rnea={:.9} mujoco={:.9}", ours[name], other);
+    }
+    println!("largest difference: {worst:.3e}");
+    ExitCode::SUCCESS
+}
+
+/// With the `mujoco` feature: the joint positions after some steps of the simulation (contacts off).
+#[cfg(feature = "mujoco")]
+fn run_mujoco_step(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("mujoco-step", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("mujoco-step", e),
+    };
+    let mut maps = Vec::new();
+    for flag in ["--joints", "--velocities"] {
+        match parse_joint_positions(&find_flag(args, flag).unwrap_or_default()) {
+            Ok(m) => maps.push(m),
+            Err(e) => return fail("mujoco-step", format!("invalid {flag} value: {e}")),
+        }
+    }
+    let steps = match find_flag(args, "--steps").map(|t| t.parse::<usize>()) {
+        None => 1,
+        Some(Ok(n)) if (1..=1_000_000).contains(&n) => n,
+        Some(_) => {
+            return fail(
+                "mujoco-step",
+                "--steps wants a whole number from 1 to 1000000",
+            )
+        }
+    };
+    match mujoco_bridge::mujoco_step(&model, &robot_name(&urdf_path), &maps[0], &maps[1], steps) {
+        Ok(after) => {
+            let mut names: Vec<&String> = after.keys().collect();
+            names.sort();
+            for name in names {
+                println!("{name}={:.9}", after[name]);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => fail("mujoco-step", e),
+    }
+}
+
+#[cfg(not(feature = "mujoco"))]
+fn run_mujoco_step(_args: &[String]) -> ExitCode {
+    fail(
+        "mujoco-step",
+        "this build has no MuJoCo: build with `--features mujoco` (and MuJoCo installed, MUJOCO_DYNAMIC_LINK_DIR) to use it",
+    )
+}
+
+#[cfg(not(feature = "mujoco"))]
+fn run_mujoco_check(_args: &[String]) -> ExitCode {
+    fail(
+        "mujoco-check",
+        "this build has no MuJoCo: build with `--features mujoco` (and MuJoCo installed, MUJOCO_DYNAMIC_LINK_DIR) to use it",
+    )
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -690,6 +1056,13 @@ fn main() -> ExitCode {
         Some("jacobian") => run_jacobian(&args[1..]),
         Some("ik") => run_ik(&args[1..]),
         Some("predict-collision") => run_predict_collision(&args[1..]),
+        Some("self-collision") => run_self_collision(&args[1..]),
+        Some("capsules") => run_capsules(&args[1..]),
+        Some("inverse-dynamics") => run_inverse_dynamics(&args[1..]),
+        Some("mjcf") => run_mjcf(&args[1..]),
+        Some("mujoco-check") => run_mujoco_check(&args[1..]),
+        Some("mujoco-step") => run_mujoco_step(&args[1..]),
+        Some("check-trajectory") => run_check_trajectory(&args[1..]),
         // the only way the program listens on a network; never started without being asked for
         Some("serve") => server::serve_command(&args[1..]),
         _ => {

@@ -634,7 +634,7 @@ fn node_depth(model: &Model, mut node: usize) -> usize {
 }
 
 /// The number of joints between two nodes of the tree.
-fn node_distance(model: &Model, mut a: usize, mut b: usize) -> usize {
+pub(crate) fn node_distance(model: &Model, mut a: usize, mut b: usize) -> usize {
     let (mut da, mut db) = (node_depth(model, a), node_depth(model, b));
     let mut steps = 0;
     let up = |n: usize| model.parents[n - 1].map_or(0, |p| p + 1);
