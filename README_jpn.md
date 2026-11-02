@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-141%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | バージョン | `0.1.1` |
 | 成熟度 | 機能する |
-| テスト | 133 (`cargo test`) |
+| テスト | 141 (`cargo test`) |
 | 技術 | Rust / roxmltree / URDF forward kinematics |
 | 実機での確認 | まだです：このバージョンについて実機での動作記録はありません |
 
@@ -51,7 +51,7 @@ GPL-3.0-or-later - see LICENSE
 | 領域 | 状態 | ここでの意味 |
 |---|---|---|
 | ソフトウェア | 🟡 | 主な目的では動作します。足りない点は上の正直さの確認に書かれています |
-| テスト | 🟢 | 自動テスト 133 件。変更のたびに実行されます |
+| テスト | 🟢 | 自動テスト 141 件。変更のたびに実行されます |
 | 実機 | 🔴 | まだです：このバージョンについて実機での動作記録はありません |
 | 連携 | 🟠 | メッセージとルートは SDK の共通契約に照らして検証されていますが、実機と一緒に動かしたことはありません |
 | デプロイ | 🟠 | リリースとして公開されています。新しい環境へのインストールは文書化されていますが記録はありません |
@@ -76,6 +76,8 @@ GPL-3.0-or-later - see LICENSE
 * 🧮 **ヤコビ行列と逆運動学（実装済み・純粋な運動学）：** `jacobian --urdf PATH --target JOINT --joints "..."` は、関節のフレームのワールド座標系での 6 x N の幾何ヤコビ行列を出力します（テキストまたは `--json`。`<mimic>` で別の関節に従う関節は、主関節の列にその分を加えます）。`ik --urdf PATH --target JOINT --goal X,Y,Z` は、ステップを制限し、位置を関節の限界内に保ちながら、減衰最小二乗法で位置を解きます（`--tolerance`、`--damping`、`--max-step`、`--max-iterations` には既定値があります）。ヤコビ行列は順運動学の有限差分と照合して試験され、届かない目標は姿勢ではなくエラーです。公開されているデナビット・ハルテンバーグ・パラメーターから作った UR5e と Franka Emika Panda が順運動学を検証します。`docs/CLI_REFERENCE.md` を参照してください。
 
 * 🚧 **順運動学による衝突予測（実装済み・純粋な運動学・構造上、過大に見積もる）：** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` は、関節状態の短いリストによって、ロボットが HYDRA-UMC-SAFETY-ZONES のゾーンファイルのゾーンに入るか、自分自身に接触するかを答えます。リンクは、宣言した半径（既定値はありません）を持つ関節座標系間の線分で、小片に分割して、それを含む球に置き換えます。関節は補間され、サンプル間の動きの上限を付けてサンプリングされ、ゾーンが小さくされることはありません。終了コードは `0` が接触なし、`1` が接触予測、`2` が入力エラーです。シード固定の性質テスト 2 件で、実際にリンクの内側にある点の周りのゾーンが「接触なし」と報告されないことを確認しています。実機では未検証です。`docs/COLLISION_PREDICTION.md` を参照してください。
+
+**共通の基準 URDF セット。** `tests/golden/` には、HYDRA-UMC-EDITOR-URDF と HYDRA-UMC-EDITOR-STL が検査するものと同じ小さなロボットと、単純な数学の基準で求めた関節フレームの期待位置が入っています。`tests/golden_urdf.rs` が各ケースで `fk` を実行するため、3 つとも `origin`、`rpy`、`axis`、関節の種類を同じように読みます。ファイルはコピーで、HYDRA-UMC-EDITOR-URDF の `tools/golden_sync.py` が同一に保ちます。
 
 ## 🧩 HYDRA-UMC での役割
 
@@ -133,7 +135,7 @@ cargo test
 
 ## 🧪 テスト
 
-`cargo test` で自動テスト 133 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
+`cargo test` で自動テスト 141 件を実行します。 ハードウェアも、このマシンの外にあるものも必要ありません。
 
 CI は `HYDRA_UMC_CI=1 python tools/ci_validate.py` を実行し、マニフェスト、文書、8 つの README、図を検査します。
 
@@ -144,7 +146,7 @@ Rust ツールチェーン（`cargo`/`rustc`、[rustup](https://rustup.rs) 経�
 
 ```bash
 # Linux / macOS
-./build.sh   # 、`cargo test`（133 件のテスト）、その後 `cargo build --release`
+./build.sh   # 、`cargo test`（141 件のテスト）、その後 `cargo build --release`
 ./run.sh     # target/release/hydra-umc-physics-replica を実行し、名前 + バージョン + 役割を表示
 ```
 

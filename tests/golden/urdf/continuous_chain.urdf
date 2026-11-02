@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot name="continuous_chain">
+  <link name="base"/>
+  <link name="rim"/>
+  <link name="hubcap"/>
+  <link name="pointer"/>
+  <joint name="wheel" type="continuous">
+    <parent link="base"/>
+    <child link="rim"/>
+    <origin xyz="0.2 0.1 0" rpy="1.570796327 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <joint name="hub" type="fixed">
+    <parent link="rim"/>
+    <child link="hubcap"/>
+    <origin xyz="0 0 0.05" rpy="0 0 -0.9"/>
+  </joint>
+  <joint name="tool" type="revolute">
+    <parent link="hubcap"/>
+    <child link="pointer"/>
+    <origin xyz="0.1 0 0" rpy="0.2 -0.3 0.4"/>
+    <axis xyz="0.6 0 0.8"/>
+    <limit lower="-3.2" upper="3.2" effort="10" velocity="2"/>
+  </joint>
+</robot>

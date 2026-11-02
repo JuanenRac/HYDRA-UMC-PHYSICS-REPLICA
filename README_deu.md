@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-141%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.1` |
 | Reifegrad | Funktionsfähig |
-| Tests | 133 (`cargo test`) |
+| Tests | 141 (`cargo test`) |
 | Technik | Rust / roxmltree / URDF forward kinematics |
 | Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 
@@ -51,7 +51,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 | Bereich | Stand | Was das hier bedeutet |
 |---|---|---|
 | Software | 🟡 | Funktioniert für seinen Hauptzweck; die Ehrlichkeitsprüfung oben nennt, was noch fehlt |
-| Tests | 🟢 | 133 automatische Tests, bei jeder Änderung ausgeführt |
+| Tests | 🟢 | 141 automatische Tests, bei jeder Änderung ausgeführt |
 | Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
 | Integration | 🟠 | Seine Nachrichten und Routen werden gegen die gemeinsamen Verträge des SDK geprüft; es lief noch nicht zusammen mit der echten Ausrüstung |
 | Bereitstellung | 🟠 | Als Release veröffentlicht; die Installation auf einem frischen Rechner ist dokumentiert, aber nicht vermerkt |
@@ -76,6 +76,8 @@ Die Einheiten sind die von URDF (Meter und Radiant). `fk` gibt die Position jede
 * 🧮 **Jacobi-Matrix und inverse Kinematik (real, reine Kinematik):** `jacobian --urdf PATH --target JOINT --joints "..."` gibt die geometrische 6-x-N-Jacobi-Matrix des Koordinatensystems eines Gelenks im Weltsystem aus (Text oder `--json`; ein Gelenk, das über `<mimic>` einem anderen folgt, addiert seinen Anteil zur Spalte seines Leitgelenks), und `ik --urdf PATH --target JOINT --goal X,Y,Z` löst die Position mit gedämpfter kleinster Quadrate bei begrenzten Schritten und Positionen innerhalb der Gelenkgrenzen (`--tolerance`, `--damping`, `--max-step` und `--max-iterations` haben Standardwerte). Die Jacobi-Matrix wird gegen finite Differenzen der Vorwärtskinematik getestet; ein unerreichbares Ziel ist ein Fehler, keine Pose. Ein UR5e und ein Franka Emika Panda, aus den veröffentlichten Denavit-Hartenberg-Parametern gebaut, prüfen die Vorwärtskinematik. Siehe `docs/CLI_REFERENCE.md`.
 
 * 🚧 **Kollisionsvorhersage durch Vorwärtskinematik (real, reine Kinematik, überschätzt konstruktionsbedingt):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` sagt, ob eine kurze Liste von Gelenkzuständen den Roboter in eine Zone einer Zonendatei von HYDRA-UMC-SAFETY-ZONES oder in sich selbst führt. Die Glieder sind die Strecken zwischen den Gelenkkoordinatensystemen mit den Radien, die du angibst (es gibt keine Standardwerte), in Stücke geschnitten und durch Kugeln ersetzt, die sie enthalten; die Gelenke werden interpoliert und mit einer Schranke für die Bewegung zwischen den Stichproben abgetastet, und eine Zone wird nie kleiner gemacht. Exit-Code `0` frei, `1` Kontakt vorhergesagt, `2` ungültige Eingabe. Zwei Eigenschaftstests mit festem Startwert prüfen, dass eine Zone um einen Punkt, der wirklich in einem Glied liegt, nie als frei gemeldet wird. Nicht mit einem echten Roboter erprobt. Siehe `docs/COLLISION_PREDICTION.md`.
+
+**Gemeinsamer Satz von Referenz-URDF.** `tests/golden/` enthält dieselben kleinen Roboter und erwarteten Positionen der Gelenkkoordinatensysteme, die HYDRA-UMC-EDITOR-URDF und HYDRA-UMC-EDITOR-STL prüfen, berechnet mit einer einfachen Referenz in reiner Mathematik, und `tests/golden_urdf.rs` führt `fk` über jeden Fall aus, sodass alle drei `origin`, `rpy`, `axis` und die Gelenktypen gleich lesen. Die Dateien sind Kopien, die `tools/golden_sync.py` in HYDRA-UMC-EDITOR-URDF identisch hält.
 
 ## 🧩 Rolle in HYDRA-UMC
 
@@ -133,7 +135,7 @@ cargo test
 
 ## 🧪 Tests
 
-133 automatische Tests laufen mit `cargo test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
+141 automatische Tests laufen mit `cargo test`. Sie brauchen weder Hardware noch etwas außerhalb dieses Rechners.
 
 Die CI führt `HYDRA_UMC_CI=1 python tools/ci_validate.py` aus; das prüft das Manifest, die Dokumente, die acht READMEs und die Bilder.
 
@@ -143,7 +145,7 @@ Erfordert die Rust-Toolchain (`cargo`/`rustc`, Installation via [rustup](https:/
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (133 Tests), dann `cargo build --release`
+./build.sh   # `cargo test` (141 Tests), dann `cargo build --release`
 ./run.sh     # führt target/release/hydra-umc-physics-replica aus, gibt Name + Version + Rolle aus
 ```
 

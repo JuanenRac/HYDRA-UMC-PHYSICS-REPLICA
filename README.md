@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-141%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.1` |
 | Maturity | Functional |
-| Tests | 133 (`cargo test`) |
+| Tests | 141 (`cargo test`) |
 | Stack | Rust / roxmltree / URDF forward kinematics |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
 
@@ -51,7 +51,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 133 automated tests, run on every change |
+| Tests | 🟢 | 141 automated tests, run on every change |
 | Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
 | Integration | 🟠 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
 | Deployment | 🟠 | Published as a release; installing it on a clean machine is documented but not recorded |
@@ -76,6 +76,8 @@ Units are those of URDF (metres and radians). `fk` prints the position of each j
 * 🧮 **Jacobian and inverse kinematics (real, pure kinematics):** `jacobian --urdf PATH --target JOINT --joints "..."` prints the 6 x N geometric Jacobian of the frame of a joint in the world frame (text or `--json`; a joint that follows another through `<mimic>` adds its share to the column of its master), and `ik --urdf PATH --target JOINT --goal X,Y,Z` solves the position by damped least squares with limited steps and positions kept inside the joint limits (`--tolerance`, `--damping`, `--max-step` and `--max-iterations` have defaults). The Jacobian is tested against finite differences of forward kinematics; a goal out of reach is an error, not a pose. A UR5e and a Franka Emika Panda, built from the published Denavit-Hartenberg parameters, check the forward kinematics. See `docs/CLI_REFERENCE.md`.
 
 * 🚧 **Collision prediction by forward kinematics (real, pure kinematics, over-estimates by construction):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` says whether a short list of joint states brings the robot into a zone of a HYDRA-UMC-SAFETY-ZONES zones file or into itself. The links are the segments between the joint frames with the radii you declare (there are no defaults), cut into pieces and replaced by spheres that contain them; the joints are interpolated and sampled with a bound on the motion between samples, and a zone is never made smaller. Exit code `0` clear, `1` contact predicted, `2` bad input. Two seeded property tests check that a zone around a point that really lies inside a link is never reported clear. Not tried with a real robot. See `docs/COLLISION_PREDICTION.md`.
+
+**Shared golden URDF set.** `tests/golden/` holds the same small robots and expected joint-frame positions that HYDRA-UMC-EDITOR-URDF and HYDRA-UMC-EDITOR-STL check, worked out by a plain-math reference, and `tests/golden_urdf.rs` runs `fk` over every case, so the three read `origin`, `rpy`, `axis` and the joint types the same way. The files are copies, kept identical by `tools/golden_sync.py` in HYDRA-UMC-EDITOR-URDF.
 
 ## 🧩 Role in HYDRA-UMC
 
@@ -132,7 +134,7 @@ cargo test
 
 ## 🧪 Testing
 
-133 automated tests run with `cargo test`. They need no hardware and nothing outside this machine.
+141 automated tests run with `cargo test`. They need no hardware and nothing outside this machine.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 
@@ -142,7 +144,7 @@ Requires the Rust toolchain (`cargo`/`rustc`, install via [rustup](https://rustu
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (133 tests), then `cargo build --release`
+./build.sh   # `cargo test` (141 tests), then `cargo build --release`
 ./run.sh     # runs target/release/hydra-umc-physics-replica, prints name + version + role
 ```
 

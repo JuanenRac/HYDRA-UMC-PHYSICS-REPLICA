@@ -1,0 +1,267 @@
+{
+  "about": "Where each joint's child frame sits (meters, base frame) at the given joint values.",
+  "tolerance": 1e-06,
+  "cases": [
+    {
+      "urdf": "urdf/rpy_probe_a.urdf",
+      "joints": {},
+      "expected": {
+        "rot": [
+          0.1,
+          0.2,
+          0.3
+        ],
+        "probe_x": [
+          0.771212166,
+          0.765354208,
+          -0.179425539
+        ],
+        "probe_y": [
+          -0.407081873,
+          1.02195437,
+          0.55934338
+        ],
+        "probe_z": [
+          0.640686788,
+          0.269033568,
+          1.138386644
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/rpy_probe_b.urdf",
+      "joints": {},
+      "expected": {
+        "rot": [
+          -0.5,
+          0.0,
+          1.25
+        ],
+        "probe_x": [
+          -0.997998857,
+          0.372016251,
+          0.46667309
+        ],
+        "probe_y": [
+          -0.131953041,
+          -0.727239905,
+          0.670635213
+        ],
+        "probe_z": [
+          -1.285199703,
+          -0.576824089,
+          1.475245192
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/rpy_probe_c.urdf",
+      "joints": {},
+      "expected": {
+        "rot": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "probe_x": [
+          -0.029437063,
+          -0.064321155,
+          0.997494987
+        ],
+        "probe_y": [
+          -0.841618096,
+          0.539980862,
+          0.009982434
+        ],
+        "probe_z": [
+          -0.539270285,
+          -0.839215978,
+          -0.070029299
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/arm_3dof.urdf",
+      "joints": {
+        "base_yaw": 0.0,
+        "shoulder": 0.0,
+        "slide": 0.0
+      },
+      "expected": {
+        "base_yaw": [
+          0.0,
+          0.0,
+          0.1
+        ],
+        "shoulder": [
+          0.05,
+          0.0,
+          0.3
+        ],
+        "slide": [
+          0.308026801,
+          0.140960684,
+          0.240399201
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/arm_3dof.urdf",
+      "joints": {
+        "base_yaw": 0.6,
+        "shoulder": -0.4,
+        "slide": 0.05
+      },
+      "expected": {
+        "base_yaw": [
+          0.0,
+          0.0,
+          0.1
+        ],
+        "shoulder": [
+          0.041266781,
+          0.028232124,
+          0.3
+        ],
+        "slide": [
+          0.19686082,
+          0.333937015,
+          0.369534266
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/arm_3dof.urdf",
+      "joints": {
+        "base_yaw": -2.2,
+        "shoulder": 0.9,
+        "slide": 0.12
+      },
+      "expected": {
+        "base_yaw": [
+          0.0,
+          0.0,
+          0.1
+        ],
+        "shoulder": [
+          -0.029425056,
+          -0.04042482,
+          0.3
+        ],
+        "slide": [
+          -0.053971268,
+          -0.229347251,
+          -0.074307091
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/branch_tree.urdf",
+      "joints": {
+        "spine": 0.0,
+        "left_arm": 0.0,
+        "right_arm": 0.0
+      },
+      "expected": {
+        "spine": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "left_arm": [
+          0.0,
+          0.2,
+          0.8
+        ],
+        "right_arm": [
+          0.0,
+          -0.2,
+          0.8
+        ],
+        "left_tip": [
+          0.25,
+          0.2,
+          0.8
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/branch_tree.urdf",
+      "joints": {
+        "spine": 0.8,
+        "left_arm": -0.5,
+        "right_arm": 1.1
+      },
+      "expected": {
+        "spine": [
+          0.0,
+          0.0,
+          0.5
+        ],
+        "left_arm": [
+          -0.143471218,
+          0.139341342,
+          0.8
+        ],
+        "right_arm": [
+          0.143471218,
+          -0.139341342,
+          0.8
+        ],
+        "left_tip": [
+          0.030705459,
+          0.318680365,
+          0.8
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/continuous_chain.urdf",
+      "joints": {
+        "wheel": 0.0,
+        "tool": 0.0
+      },
+      "expected": {
+        "wheel": [
+          0.2,
+          0.1,
+          0.0
+        ],
+        "hub": [
+          0.2,
+          0.05,
+          0.0
+        ],
+        "tool": [
+          0.262160997,
+          0.05,
+          -0.078332691
+        ]
+      }
+    },
+    {
+      "urdf": "urdf/continuous_chain.urdf",
+      "joints": {
+        "wheel": 4.0,
+        "tool": -0.7
+      },
+      "expected": {
+        "wheel": [
+          0.2,
+          0.1,
+          0.0
+        ],
+        "hub": [
+          0.2,
+          0.05,
+          0.0
+        ],
+        "tool": [
+          0.100086485,
+          0.05,
+          0.004158066
+        ]
+      }
+    }
+  ]
+}

@@ -235,3 +235,7 @@ a MuJoCo/PhysX simulation yet — see the module docs at the top of
 `src/main.rs` and `src/urdf.rs` for the honest scope: a real `parent`/
 `child` tree walk (branches included, `<mimic>` followers worked out), and no
 actual rigid-body or contact simulation, no orientation goal in the inverse kinematics (position only).
+
+## Golden URDF set
+
+`tests/golden/` holds URDF files and the joint-frame positions `fk` has to give for them (`cases.json`, tolerance 2e-6 because `fk` prints six decimals). They are the same files that HYDRA-UMC-EDITOR-URDF and HYDRA-UMC-EDITOR-STL check; `cargo test --test golden_urdf` runs them.

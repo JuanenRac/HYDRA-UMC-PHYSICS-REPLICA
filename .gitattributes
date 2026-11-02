@@ -5,3 +5,6 @@
 *.sh text eol=lf
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# The shared golden URDF files are compared byte for byte across repositories.
+tests/golden/** -text

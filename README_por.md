@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-141%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versão | `0.1.1` |
 | Maturidade | Funcional |
-| Testes | 133 (`cargo test`) |
+| Testes | 141 (`cargo test`) |
 | Tecnologia | Rust / roxmltree / URDF forward kinematics |
 | Em hardware real | Ainda não: não há registo de execução em hardware real para esta versão |
 
@@ -51,7 +51,7 @@ Cada linha é uma parte deste repositório e a luz diz até onde chega hoje. É 
 | Área | Estado | O que significa aqui |
 |---|---|---|
 | Software | 🟡 | Funciona para o seu propósito principal; a verificação de honestidade acima lista o que ainda falta |
-| Testes | 🟢 | 133 testes automáticos, executados a cada alteração |
+| Testes | 🟢 | 141 testes automáticos, executados a cada alteração |
 | Hardware real | 🔴 | Ainda não: não há registo de execução em hardware real para esta versão |
 | Integração | 🟠 | As suas mensagens e rotas são verificadas contra os contratos partilhados do SDK; ainda não funcionou em conjunto com o equipamento real |
 | Implantação | 🟠 | Publicado como release; instalá-lo numa máquina limpa está documentado mas não registado |
@@ -76,6 +76,8 @@ As unidades são as do URDF (metros e radianos). O `fk` imprime a posição de c
 * 🧮 **Jacobiana e cinemática inversa (reais, cinemática pura):** `jacobian --urdf PATH --target JOINT --joints "..."` imprime a jacobiana geométrica 6 x N do referencial de uma junta no referencial do mundo (texto ou `--json`; uma junta que segue outra através de `<mimic>` soma a sua parte à coluna da sua principal), e `ik --urdf PATH --target JOINT --goal X,Y,Z` resolve a posição por mínimos quadrados amortecidos com passos limitados e posições mantidas dentro dos limites das juntas (`--tolerance`, `--damping`, `--max-step` e `--max-iterations` têm valores por omissão). A jacobiana é testada contra diferenças finitas da cinemática direta; um objetivo fora de alcance é um erro, não uma pose. Um UR5e e um Franka Emika Panda, construídos a partir dos parâmetros de Denavit-Hartenberg publicados, verificam a cinemática direta. Ver `docs/CLI_REFERENCE.md`.
 
 * 🚧 **Previsão de colisão por cinemática direta (real, cinemática pura, sobrestima por construção):** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` diz se uma lista curta de estados das articulações leva o robô a uma zona de um ficheiro de zonas do HYDRA-UMC-SAFETY-ZONES ou contra si próprio. Os elos são os segmentos entre os sistemas de referência das articulações com os raios que declara (não há valores por defeito), cortados em pedaços e substituídos por esferas que os contêm; as articulações são interpoladas e amostradas com um limite do movimento entre amostras, e uma zona nunca é tornada mais pequena. Código de saída `0` livre, `1` contacto previsto, `2` entrada incorreta. Dois testes de propriedades com semente fixa verificam que uma zona à volta de um ponto que está mesmo dentro de um elo nunca é dada como livre. Não experimentado com um robô real. Veja `docs/COLLISION_PREDICTION.md`.
+
+**Conjunto comum de URDF de referência.** `tests/golden/` guarda os mesmos robôs pequenos e as mesmas posições esperadas dos referenciais de junta que o HYDRA-UMC-EDITOR-URDF e o HYDRA-UMC-EDITOR-STL verificam, calculadas por uma referência de matemática simples, e `tests/golden_urdf.rs` executa `fk` sobre cada caso, de modo que os três leem `origin`, `rpy`, `axis` e os tipos de junta da mesma maneira. Os ficheiros são cópias que o `tools/golden_sync.py` do HYDRA-UMC-EDITOR-URDF mantém idênticas.
 
 ## 🧩 Papel no HYDRA-UMC
 
@@ -129,7 +131,7 @@ cargo test
 
 ## 🧪 Testes
 
-133 testes automáticos correm com `cargo test`. Não precisam de hardware nem de nada fora desta máquina.
+141 testes automáticos correm com `cargo test`. Não precisam de hardware nem de nada fora desta máquina.
 
 A CI executa `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que verifica o manifesto, os documentos, os oito README e as imagens.
 
@@ -139,7 +141,7 @@ Requer a cadeia de ferramentas Rust (`cargo`/`rustc`, instalada via [rustup](htt
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (133 testes) e depois `cargo build --release`
+./build.sh   # `cargo test` (141 testes) e depois `cargo build --release`
 ./run.sh     # executa target/release/hydra-umc-physics-replica, imprime nome + versão + papel
 ```
 

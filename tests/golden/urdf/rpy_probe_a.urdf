@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot name="rpy_probe_a">
+  <link name="base"/>
+  <link name="frame"/>
+  <link name="px"/>
+  <link name="py"/>
+  <link name="pz"/>
+  <joint name="rot" type="fixed">
+    <parent link="base"/>
+    <child link="frame"/>
+    <origin xyz="0.1 0.2 0.3" rpy="0.3 0.5 0.7"/>
+  </joint>
+  <joint name="probe_x" type="fixed">
+    <parent link="frame"/>
+    <child link="px"/>
+    <origin xyz="1 0 0" rpy="0 0 0"/>
+  </joint>
+  <joint name="probe_y" type="fixed">
+    <parent link="frame"/>
+    <child link="py"/>
+    <origin xyz="0 1 0" rpy="0 0 0"/>
+  </joint>
+  <joint name="probe_z" type="fixed">
+    <parent link="frame"/>
+    <child link="pz"/>
+    <origin xyz="0 0 1" rpy="0 0 0"/>
+  </joint>
+</robot>

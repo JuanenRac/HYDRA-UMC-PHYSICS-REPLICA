@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-133%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-141%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.1.1` |
 | 成熟度 | 可用 |
-| 测试 | 133 (`cargo test`) |
+| 测试 | 141 (`cargo test`) |
 | 技术栈 | Rust / roxmltree / URDF forward kinematics |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
 
@@ -51,7 +51,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 133 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 141 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 集成 | 🟠 | 其消息和路由已对照 SDK 的共享契约检查；尚未与真实设备一起运行 |
 | 部署 | 🟠 | 已作为发布版本公开；在干净机器上安装有文档，但没有记录 |
@@ -76,6 +76,8 @@ GPL-3.0-or-later - see LICENSE
 * 🧮 **雅可比矩阵与逆运动学（真实，纯运动学）：** `jacobian --urdf PATH --target JOINT --joints "..."` 输出关节坐标系在世界坐标系中的 6 x N 几何雅可比矩阵（文本或 `--json`；通过 `<mimic>` 跟随另一个关节的关节，会把自己的部分加到其主关节的列上），`ik --urdf PATH --target JOINT --goal X,Y,Z` 用阻尼最小二乘法求解位置，步长受限，位置保持在关节限位之内（`--tolerance`、`--damping`、`--max-step` 和 `--max-iterations` 都有默认值）。雅可比矩阵用正运动学的有限差分检验；够不到的目标是错误，而不是位姿。用公开的 Denavit-Hartenberg 参数构建的 UR5e 和 Franka Emika Panda 用于检验正运动学。参见 `docs/CLI_REFERENCE.md`。
 
 * 🚧 **基于正向运动学的碰撞预测（已实现，纯运动学，按构造偏大估计）：** `predict-collision --urdf PATH --zones PATH --config PATH --trajectory PATH` 判断一小段关节状态列表是否会使机器人进入 HYDRA-UMC-SAFETY-ZONES 区域文件中的某个区域，或碰到自身。连杆是各关节坐标系之间的线段，半径由你声明（没有默认值），被切成小段并替换为包含它们的球；关节会被插值并采样，并给出采样间运动的上界，区域绝不会被缩小。退出码 `0` 表示无接触，`1` 表示预测到接触，`2` 表示输入错误。两个固定种子的性质测试检查：在真正位于连杆内部的点周围的区域，绝不会被报告为无接触。尚未在真实机器人上试验。参见 `docs/COLLISION_PREDICTION.md`。
+
+**共用的基准 URDF 集。** `tests/golden/` 中是与 HYDRA-UMC-EDITOR-URDF、HYDRA-UMC-EDITOR-STL 检查的相同的小型机器人和各关节坐标系的预期位置，由只用简单数学的基准算出；`tests/golden_urdf.rs` 对每个用例运行 `fk`，因此三者读取 `origin`、`rpy`、`axis` 和关节类型的方式一致。这些文件是副本，由 HYDRA-UMC-EDITOR-URDF 的 `tools/golden_sync.py` 保持一致。
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
@@ -132,7 +134,7 @@ cargo test
 
 ## 🧪 测试
 
-运行 `cargo test` 会执行 133 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+运行 `cargo test` 会执行 141 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 
@@ -143,7 +145,7 @@ CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档�
 
 ```bash
 # Linux / macOS
-./build.sh   # 、`cargo test`（133 个测试），然后执行 `cargo build --release`
+./build.sh   # 、`cargo test`（141 个测试），然后执行 `cargo build --release`
 ./run.sh     # 运行 target/release/hydra-umc-physics-replica，打印名称 + 版本 + 角色
 ```
 
