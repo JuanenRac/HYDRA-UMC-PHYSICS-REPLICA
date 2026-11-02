@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.2] - A golden URDF set shared with the URDF and STL editors, an optional HTTP listener with GET /health and GET /metrics and no frame rate claimed for the twin
+
 - **A golden URDF set shared with the URDF editor and the STL editor:** `tests/golden/` and `tests/golden_urdf.rs` run `fk` over every case (rpy probes, a 3-joint arm, a branching tree, a continuous joint with a tilted axis) and compare each joint frame with the position worked out by a plain-math reference, so the three programs read `origin`, `rpy`, `axis` and the joint types the same way. The files are copies, kept identical by `tools/golden_sync.py` in HYDRA-UMC-EDITOR-URDF.
 
 - **An optional HTTP listener with `GET /health` and `GET /metrics`:** `serve [--addr HOST:PORT] [--token TOKEN] [--allow-anonymous]` (the token can also come from `PHYSICS_REPLICA_TOKEN`). It is off unless the command is given, listens on `127.0.0.1:8118` by default, refuses another address without a token (unless `--allow-anonymous`) and answers only those two routes: liveness, open, and the numbers of the service in the text format of Prometheus (the version, the uptime, the responses by class of status and the health), behind the token when one is set (`401` without it). It computes nothing and never publishes a URDF, a pose or a token. The metrics code is the canonical `service_metrics.rs` of HYDRA-UMC-SDK, copied byte for byte; the only new dependency is `tiny_http`.
