@@ -23,7 +23,10 @@ const URDF: &str = r#"<robot name="swing">
 </robot>"#;
 
 fn write_file(name: &str, content: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("physics-replica-dc-{}", std::process::id()));
+    // one directory per call: tests run in parallel and a shared file would be read while another test truncates it
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let dir = std::env::temp_dir().join(format!("physics-replica-dc-{}-{}", std::process::id(), n));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join(name);
     std::fs::write(&path, content).unwrap();
