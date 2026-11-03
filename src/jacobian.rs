@@ -172,6 +172,9 @@ pub struct IkOptions {
     pub damping: f64,
     /// Longest step of one iteration, in metres of the goal error, so a far goal is approached in several steps.
     pub max_step: f64,
+    /// Longest time the iteration may take; when it runs out the answer is "not reached" with the iterations done.
+    /// `None` (the default, and the command line) means only `max_iterations` bounds the work.
+    pub time_limit: Option<std::time::Duration>,
 }
 
 impl Default for IkOptions {
@@ -181,6 +184,7 @@ impl Default for IkOptions {
             tolerance: 1e-4,
             damping: 0.05,
             max_step: 0.1,
+            time_limit: None,
         }
     }
 }
@@ -239,6 +243,7 @@ pub fn ik_position(
     // the starting positions must be valid before any step is taken
     effective_positions(model, &positions)?;
     let mut residual = f64::INFINITY;
+    let started = std::time::Instant::now();
     for iteration in 0..=options.max_iterations {
         let worlds = forward_kinematics_model(model, &positions)?;
         let tip = worlds[target_index].1.translation_part();
@@ -253,6 +258,12 @@ pub fn ik_position(
         }
         if iteration == options.max_iterations {
             break;
+        }
+        if options.time_limit.is_some_and(|l| started.elapsed() >= l) {
+            return Err(JacobianError::NotReached {
+                residual,
+                iterations: iteration,
+            });
         }
         let scale = if residual > options.max_step {
             options.max_step / residual

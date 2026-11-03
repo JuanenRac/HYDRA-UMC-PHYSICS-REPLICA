@@ -29,7 +29,11 @@ pub const NOTE: &str =
 
 #[derive(Debug, Clone)]
 pub struct IkLimits {
+    /// `POST /ik` answers only with this (`ik.enabled` of the configuration file; off by default)
+    pub enabled: bool,
     pub max_iterations_cap: usize,
+    /// Longest time one request may spend iterating, in milliseconds (`ik.max_millis`)
+    pub max_millis: u64,
     pub defaults: IkOptions,
 }
 
@@ -53,7 +57,9 @@ impl Default for ServiceConfig {
             max_samples: 2000,
             allow_inline_urdf: false,
             ik: IkLimits {
+                enabled: false,
                 max_iterations_cap: 500,
+                max_millis: 2000,
                 defaults: IkOptions::default(),
             },
             trajectory: trajectory::Config::default(),
@@ -72,7 +78,14 @@ const CONFIG_FIELDS: [&str; 8] = [
     "collision",
     "metrics",
 ];
-const IK_FIELDS: [&str; 4] = ["max_iterations_cap", "tolerance", "damping", "max_step"];
+const IK_FIELDS: [&str; 6] = [
+    "enabled",
+    "max_iterations_cap",
+    "max_millis",
+    "tolerance",
+    "damping",
+    "max_step",
+];
 
 /// Reads the configuration file of the service; every field is optional and an unknown field is an error.
 pub fn parse_config(raw: &Value) -> Result<ServiceConfig, String> {
@@ -149,6 +162,15 @@ pub fn parse_config(raw: &Value) -> Result<ServiceConfig, String> {
                     .ok_or_else(|| format!("ik.{key} must be a number above zero")),
             }
         };
+        if let Some(v) = ik.get("enabled") {
+            config.ik.enabled = v.as_bool().ok_or("ik.enabled must be true or false")?;
+        }
+        if let Some(n) = ik.get("max_millis") {
+            config.ik.max_millis = n
+                .as_u64()
+                .filter(|n| (1..=60_000).contains(n))
+                .ok_or("ik.max_millis must be a whole number from 1 to 60000")?;
+        }
         if let Some(n) = ik.get("max_iterations_cap") {
             config.ik.max_iterations_cap = n
                 .as_u64()
@@ -344,6 +366,7 @@ fn route_ik(model: &Model, body: &Value, ctx: &Context, lang: Lang) -> Result<Va
     let initial = joint_map(body.get("joints"), "joints")?;
     check_names(model, &initial, "joints")?;
     let mut options = ctx.config.ik.defaults;
+    options.time_limit = Some(std::time::Duration::from_millis(ctx.config.ik.max_millis));
     for (key, slot) in [
         ("tolerance", &mut options.tolerance),
         ("damping", &mut options.damping),
@@ -377,6 +400,7 @@ fn route_ik(model: &Model, body: &Value, ctx: &Context, lang: Lang) -> Result<Va
                 "reached": true,
                 "residual": solution.residual,
                 "iterations": solution.iterations,
+                "timed_out": false,
                 "joints": sorted_map(&solution.positions),
                 "note": NOTE,
             }),
@@ -387,7 +411,7 @@ fn route_ik(model: &Model, body: &Value, ctx: &Context, lang: Lang) -> Result<Va
             residual,
             iterations,
         }) => Ok(stamp(
-            json!({"reached": false, "residual": residual, "iterations": iterations, "note": NOTE}),
+            json!({"reached": false, "residual": residual, "iterations": iterations, "timed_out": iterations < options.max_iterations, "note": NOTE}),
             Msg::IkNotReached,
             lang,
         )),
@@ -513,6 +537,13 @@ fn handle_inner(
             detail: None,
         });
     }
+    if path == "/ik" && !ctx.config.ik.enabled {
+        return Err(ApiError {
+            status: 404,
+            msg: Msg::IkOff,
+            detail: None,
+        });
+    }
     let allowed = if path == "/capsules" {
         method == "GET" || method == "POST"
     } else {
@@ -598,6 +629,12 @@ mod tests {
         }
     }
 
+    fn ik_on() -> ServiceConfig {
+        let mut config = ServiceConfig::default();
+        config.ik.enabled = true;
+        config
+    }
+
     fn post(path: &str, body: Value, ctx: &Context) -> (u16, Value) {
         handle("POST", path, body.to_string().as_bytes(), ctx, Lang::En)
     }
@@ -636,7 +673,7 @@ mod tests {
 
     #[test]
     fn ik_reaches_a_goal_and_says_so_when_it_cannot() {
-        let ctx = ctx(ServiceConfig::default());
+        let ctx = ctx(ik_on());
         let (status, v) = post(
             "/ik",
             json!({"target": "tip", "goal": [1.2, 0.9, 0.0], "joints": {"shoulder": 0.2, "elbow": 0.3}}),
@@ -674,7 +711,7 @@ mod tests {
 
     #[test]
     fn the_work_one_request_can_ask_for_is_bounded_by_the_configuration() {
-        let mut config = ServiceConfig::default();
+        let mut config = ik_on();
         config.ik.max_iterations_cap = 3;
         let ctx = ctx(config);
         let (_, v) = post(
@@ -684,6 +721,52 @@ mod tests {
         );
         assert_eq!(v["reached"], json!(false));
         assert!(v["iterations"].as_u64().unwrap() <= 3);
+    }
+
+    #[test]
+    fn the_ik_route_is_off_until_the_configuration_opens_it() {
+        let off = ctx(ServiceConfig::default());
+        let body = json!({"target": "tip", "goal": [1.2, 0.9, 0.0], "joints": {"shoulder": 0.2, "elbow": 0.3}});
+        let (status, v) = post("/ik", body.clone(), &off);
+        assert_eq!(status, 404);
+        assert_eq!(v["code"], "ik_off");
+        // the other routes are not touched by the switch
+        assert_eq!(
+            post(
+                "/fk",
+                json!({"joints": {"shoulder": 0.0, "elbow": 0.0}}),
+                &off
+            )
+            .0,
+            200
+        );
+        let config = parse_config(&json!({"ik": {"enabled": true, "max_millis": 50}})).unwrap();
+        assert!(config.ik.enabled);
+        assert_eq!(config.ik.max_millis, 50);
+        let (status, v) = post("/ik", body, &ctx(config));
+        assert_eq!(status, 200, "{v}");
+        assert_eq!(v["reached"], json!(true));
+        assert_eq!(v["timed_out"], json!(false));
+        assert!(parse_config(&json!({"ik": {"enabled": "yes"}})).is_err());
+        assert!(parse_config(&json!({"ik": {"max_millis": 0}})).is_err());
+    }
+
+    #[test]
+    fn the_time_of_one_ik_request_is_bounded() {
+        let mut config = ik_on();
+        config.ik.max_millis = 1;
+        config.ik.max_iterations_cap = 100_000;
+        let ctx = ctx(config);
+        // an unreachable goal with tiny steps would take 100000 iterations: the time limit ends it first
+        let (status, v) = post(
+            "/ik",
+            json!({"target": "tip", "goal": [5.0, 0.0, 0.0], "joints": {"shoulder": 0.2, "elbow": 0.3},
+                   "max_iterations": 100000, "max_step": 0.00001, "tolerance": 0.0000001}),
+            &ctx,
+        );
+        assert_eq!(status, 200, "{v}");
+        assert_eq!(v["reached"], json!(false));
+        assert_eq!(v["timed_out"], json!(true), "{v}");
     }
 
     #[test]

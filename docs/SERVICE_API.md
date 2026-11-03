@@ -19,8 +19,9 @@ for what it does not cover.
 - With a token, every route except `GET /health` needs `Authorization: Bearer TOKEN` (`401` otherwise).
 - The robot is the file given at the start. A path is never read from a request. A request may carry its own URDF text
   (`"urdf": "<robot ...>"`) only when the configuration says `"allow_inline_urdf": true` (otherwise `403`, `code: inline_urdf_off`).
-- The size of a body (`max_body_bytes`, default 1 MiB, `413`), the number of samples of a trajectory (`max_samples`, default 2000) and the
-  iterations of an inverse-kinematics request (`ik.max_iterations_cap`, default 500) are bounded by the configuration.
+- `POST /ik` is off until the configuration says `"ik": {"enabled": true}`; closed it answers `404` (`code: ik_off`), even with the token.
+- The size of a body (`max_body_bytes`, default 1 MiB, `413`), the number of samples of a trajectory (`max_samples`, default 2000), the
+  iterations of an inverse-kinematics request (`ik.max_iterations_cap`, default 500) and its time (`ik.max_millis`, default 2000) are bounded by the configuration.
 - A name of a joint that the URDF does not have is an error, and a joint with no position is an error: an unknown value is never
   read as zero.
 
@@ -35,7 +36,7 @@ service live here and not in the code.
   "max_body_bytes": 1048576,
   "max_samples": 2000,
   "allow_inline_urdf": false,
-  "ik": { "max_iterations_cap": 500, "tolerance": 0.0001, "damping": 0.05, "max_step": 0.1 },
+  "ik": { "enabled": true, "max_iterations_cap": 500, "max_millis": 2000, "tolerance": 0.0001, "damping": 0.05, "max_step": 0.1 },
   "trajectory": {
     "position_tolerance": 1e-9,
     "velocity_tolerance": 1e-9,
@@ -89,6 +90,9 @@ that follows another (`<mimic>`) is derived and a position given for it is an er
 
 ## `POST /ik`
 
+Off unless the configuration has `"ik": {"enabled": true}` (`404`, `code: ik_off`, otherwise). It is meant for a program on the same machine that needs to know
+whether a pose can be reached, such as the kinematic check of a trajectory planner.
+
 ```json
 { "target": "tool", "goal": [0.4, 0.1, 0.3], "joints": { "shoulder": 0.2, "elbow": 0.3 },
   "tolerance": 0.0001, "damping": 0.05, "max_step": 0.1, "max_iterations": 200 }
@@ -96,8 +100,10 @@ that follows another (`<mimic>`) is derived and a position given for it is an er
 
 Damped least squares on the position of the frame of joint `target`, from the starting `joints`, with the positions kept inside the
 limits. The four numbers are optional (the defaults are those of the configuration) and `max_iterations` never goes over
-`ik.max_iterations_cap`. Answers `200` with `{"reached": true, "residual", "iterations", "joints": {...}}`, or `{"reached": false,
-"residual", "iterations"}` when the goal is out of reach: no pose is made up for it. Only the position is solved, not the
+`ik.max_iterations_cap`. Answers `200` with `{"reached": true, "residual", "iterations", "timed_out": false, "joints": {...}}`, or `{"reached": false,
+"residual", "iterations", "timed_out"}` when the goal is out of reach: no pose is made up for it. `timed_out` is true when `ik.max_millis` ended
+the iteration before `max_iterations` did. `residual` is the distance in metres between the frame and the goal. A body over `max_body_bytes` is `413`, an unknown joint or a missing
+position is `400`. Only the position is solved, not the
 orientation.
 
 ## `POST /check-trajectory`

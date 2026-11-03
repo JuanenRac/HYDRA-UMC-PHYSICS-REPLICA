@@ -237,7 +237,7 @@ of states brings two links into contact (exit `0` clear, `1` contact, `2` bad in
 joint (exit `1` when one is over its `<limit effort>`); `mjcf` writes the URDF as MuJoCo's MJCF; `check-trajectory` is the check of
 `POST /check-trajectory` on files (exit `0` within the limits, `1` a limit is broken). The model, the assumptions and the limits are in
 `DYNAMICS_AND_COLLISION.md`; the HTTP routes and the configuration file in `SERVICE_API.md`. `serve` takes `--urdf PATH` and `--config PATH`
-to answer `POST /fk`, `/ik`, `/check-trajectory`, `/inverse-dynamics` and `GET|POST /capsules` for that robot.
+to answer `POST /fk`, `/ik` (only when the configuration enables it), `/check-trajectory`, `/inverse-dynamics` and `GET|POST /capsules` for that robot.
 
 ## Exit codes
 

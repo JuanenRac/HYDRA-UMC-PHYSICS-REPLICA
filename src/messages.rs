@@ -80,11 +80,12 @@ pub enum Msg {
     IkReached,
     IkNotReached,
     IncompleteCheck,
+    IkOff,
 }
 
 impl Msg {
     #[cfg(test)]
-    pub const ALL: [Msg; 12] = [
+    pub const ALL: [Msg; 13] = [
         Msg::NotFound,
         Msg::ComputeOff,
         Msg::Unauthorized,
@@ -97,6 +98,7 @@ impl Msg {
         Msg::IkReached,
         Msg::IkNotReached,
         Msg::IncompleteCheck,
+        Msg::IkOff,
     ];
 
     /// The stable code of the sentence.
@@ -114,6 +116,7 @@ impl Msg {
             Msg::IkReached => "ik_reached",
             Msg::IkNotReached => "ik_not_reached",
             Msg::IncompleteCheck => "incomplete_check",
+            Msg::IkOff => "ik_off",
         }
     }
 
@@ -238,6 +241,16 @@ impl Msg {
                 "実行できなかったチェックがあり、回答は不完全です",
                 "有一项检查无法运行，答复不完整",
                 "uma verificação não pôde ser executada; a resposta está incompleta",
+            ],
+            Msg::IkOff => [
+                "the inverse-kinematics route is off: set ik.enabled to true in the configuration",
+                "la ruta de cinemática inversa está apagada: ponga ik.enabled a true en la configuración",
+                "Die Route für inverse Kinematik ist ausgeschaltet: ik.enabled in der Konfiguration auf true setzen",
+                "la route de cinématique inverse est désactivée : mettez ik.enabled à true dans la configuration",
+                "la rotta di cinematica inversa è disattivata: impostare ik.enabled su true nella configurazione",
+                "逆運動学のルートはオフです。設定で ik.enabled を true にしてください",
+                "逆运动学路由已关闭：请在配置中将 ik.enabled 设为 true",
+                "a rota de cinemática inversa está desligada: ponha ik.enabled a true na configuração",
             ],
         };
         row[Lang::ALL.iter().position(|l| *l == lang).unwrap_or(0)]

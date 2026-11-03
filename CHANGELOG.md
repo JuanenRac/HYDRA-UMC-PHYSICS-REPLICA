@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`POST /ik` is off by default and bounded in time:** the `ik` section of the configuration file gains `enabled` (`false` by default; closed, the route answers `404` with `code: ik_off`, in the eight languages) and `max_millis` (the longest an inverse-kinematics request may iterate, default 2000 ms). The answer now says through `timed_out` whether the time ended the iteration, so a program that checks a trajectory with it can tell a goal out of reach from a request that ran out of time.
+
 - **`GET /metrics` is off by default and loopback-only:** the new `metrics` section of the configuration file (`{"metrics": {"enabled": true}}`, given with `serve --config`) opens it. Closed, the route answers `404`; open, it answers a caller on this machine, or any caller with the bearer token when the service has one.
 
 ## [0.1.3] - An HTTP service for forward and inverse kinematics and trajectory checks, self-collision with capsules, inverse dynamics from the inertial data and an optional MuJoCo bridge
