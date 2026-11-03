@@ -168,7 +168,21 @@ pub fn run(server: &Server, token: &Option<String>, ctx: &Context) {
     METRICS.start();
     for mut request in server.incoming_requests() {
         if is_metrics_request(&request) {
-            let allowed = authorized(&request, token);
+            // closed unless the configuration opens it (then the route does not exist)
+            if !ctx.config.metrics {
+                write_json(
+                    request,
+                    404,
+                    &error_body(404, Msg::NotFound, None, ctx.config.language),
+                );
+                continue;
+            }
+            // with a token the caller presents it; without one only a caller on this machine may read the numbers
+            let allowed = if token.is_some() {
+                authorized(&request, token)
+            } else {
+                request.remote_addr().is_some_and(|a| a.ip().is_loopback())
+            };
             METRICS.respond(request, VERSION, allowed, &[]);
             continue;
         }
@@ -309,6 +323,19 @@ mod tests {
         )
     }
 
+    fn start_metrics(token: Option<&str>) -> u16 {
+        start_with(
+            token,
+            Context {
+                config: ServiceConfig {
+                    metrics: true,
+                    ..ServiceConfig::default()
+                },
+                model: None,
+            },
+        )
+    }
+
     fn start_with(token: Option<&str>, ctx: Context) -> u16 {
         let server = bind("127.0.0.1:0").unwrap();
         let port = server.server_addr().to_ip().unwrap().port();
@@ -382,7 +409,7 @@ mod tests {
 
     #[test]
     fn health_and_metrics_answer_and_everything_else_is_404() {
-        let port = start(None);
+        let port = start_metrics(None);
         let (status, body) = get(port, "/health", None);
         assert_eq!(status, 200, "{body}");
         assert!(body.contains(NAME));
@@ -397,8 +424,17 @@ mod tests {
     }
 
     #[test]
+    fn the_metrics_are_off_by_default_even_with_the_token() {
+        let port = start(None);
+        assert_eq!(get(port, "/health", None).0, 200);
+        assert_eq!(get(port, "/metrics", None).0, 404);
+        let guarded = start(Some("s3cret-token"));
+        assert_eq!(get(guarded, "/metrics", Some("s3cret-token")).0, 404);
+    }
+
+    #[test]
     fn the_metrics_ask_for_the_token_when_one_is_set_and_health_stays_open() {
-        let port = start(Some("s3cret-token"));
+        let port = start_metrics(Some("s3cret-token"));
         assert_eq!(get(port, "/health", None).0, 200);
         assert_eq!(get(port, "/metrics", None).0, 401);
         assert_eq!(get(port, "/metrics", Some("wrong-token")).0, 401);

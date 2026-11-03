@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`GET /metrics` is off by default and loopback-only:** the new `metrics` section of the configuration file (`{"metrics": {"enabled": true}}`, given with `serve --config`) opens it. Closed, the route answers `404`; open, it answers a caller on this machine, or any caller with the bearer token when the service has one.
+
 ## [0.1.3] - An HTTP service for forward and inverse kinematics and trajectory checks, self-collision with capsules, inverse dynamics from the inertial data and an optional MuJoCo bridge
 
 - **The computing routes of `serve`:** with `serve --urdf PATH` the listener also answers `POST /fk`, `POST /ik`, `POST /check-trajectory`, `POST /inverse-dynamics` and `GET|POST /capsules` for that robot, behind the token when one is set; without a URDF they answer `404` and `GET /health` and `GET /metrics` are as before. The size of a body, the number of samples and the iterations of an inverse-kinematics request are bounded by a configuration file (`--config`), a URDF inside a request is refused unless the configuration allows it, and the limits and tolerances live in that file and not in the code. See `docs/SERVICE_API.md`.

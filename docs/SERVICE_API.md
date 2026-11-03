@@ -1,7 +1,7 @@
 # The computing routes of `serve`
 
 `serve` is the only part of this program that listens on a network, and it is off unless the command is given.
-`GET /health` and `GET /metrics` are always there. With `--urdf PATH` the program also answers the routes below
+`GET /health` is always there; `GET /metrics` only when the configuration file opens it (see below). With `--urdf PATH` the program also answers the routes below
 for that robot; without a URDF they answer `404` (`code: compute_off`).
 
 ```
@@ -50,9 +50,12 @@ service live here and not in the code.
     "collision": { "margin_m": 0.0, "step_m": 0.02, "min_link_distance": 2, "ignore_pairs": [], "mesh_radius_m": null },
     "max_listed": 64
   },
-  "collision": { "margin_m": 0.01 }
+  "collision": { "margin_m": 0.01 },
+  "metrics": { "enabled": true }
 }
 ```
+
+`metrics` opens `GET /metrics` (the text format of Prometheus); it is off unless `enabled` is `true`, and closed the route answers `404` like any unknown path, even with the token. Open, it answers a caller on this machine, or any caller that presents the bearer token when the service has one (`401` otherwise). It publishes numbers only (version, uptime, responses by class of status and health); no label carries a path, an address or a robot.
 
 `language` is the language of the `message` of the answers (`en`, `es`, `de`, `fr`, `it`, `ja`, `zh`, `pt`); a request can ask
 for another with `?lang=xx` or `Accept-Language`. The `collision` object may be given at the top or inside `trajectory`. The command

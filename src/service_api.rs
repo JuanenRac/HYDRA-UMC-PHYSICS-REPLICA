@@ -41,6 +41,8 @@ pub struct ServiceConfig {
     pub allow_inline_urdf: bool,
     pub ik: IkLimits,
     pub trajectory: trajectory::Config,
+    /// `GET /metrics` answers only with this (the `metrics` section of the configuration file; off by default)
+    pub metrics: bool,
 }
 
 impl Default for ServiceConfig {
@@ -55,11 +57,12 @@ impl Default for ServiceConfig {
                 defaults: IkOptions::default(),
             },
             trajectory: trajectory::Config::default(),
+            metrics: false,
         }
     }
 }
 
-const CONFIG_FIELDS: [&str; 7] = [
+const CONFIG_FIELDS: [&str; 8] = [
     "language",
     "max_body_bytes",
     "max_samples",
@@ -67,6 +70,7 @@ const CONFIG_FIELDS: [&str; 7] = [
     "ik",
     "trajectory",
     "collision",
+    "metrics",
 ];
 const IK_FIELDS: [&str; 4] = ["max_iterations_cap", "tolerance", "damping", "max_step"];
 
@@ -116,6 +120,19 @@ pub fn parse_config(raw: &Value) -> Result<ServiceConfig, String> {
         config.allow_inline_urdf = v
             .as_bool()
             .ok_or("allow_inline_urdf must be true or false")?;
+    }
+    if let Some(v) = object.get("metrics") {
+        let section = v.as_object().ok_or("metrics must be an object")?;
+        if let Some(k) = section.keys().find(|k| k.as_str() != "enabled") {
+            return Err(format!(
+                "the metrics configuration has an unknown field: {k}"
+            ));
+        }
+        if let Some(on) = section.get("enabled") {
+            config.metrics = on
+                .as_bool()
+                .ok_or("metrics.enabled must be true or false")?;
+        }
     }
     if let Some(v) = object.get("ik") {
         let ik = v.as_object().ok_or("ik must be an object")?;
