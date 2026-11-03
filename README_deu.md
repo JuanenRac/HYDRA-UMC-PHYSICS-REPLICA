@@ -85,7 +85,7 @@ Die Einheiten sind die von URDF (Meter und Radiant). `fk` gibt die Position jede
 
 ## 🧩 Rolle in HYDRA-UMC
 
-**HYDRA-UMC-PHYSICS-REPLICA** ist das Kinematikmodul des digitalen Zwillings: Es liest einen URDF-Baum, berechnet die Pose jedes Gelenks (Vorwärtskinematik), prüft Gelenkstellungen gegen ihre Grenzen und schätzt die Gelenkmomente aus den Trägheitsdaten (inverse Dynamik). Es simuliert weder Kontakt noch Reibung noch eine Starrkörperwelt. Der optionale Befehl `serve` startet einen kleinen HTTP-Listener (aus, solange er nicht verlangt wird, standardmäßig nur Loopback, Token optional), der `GET /health` und `GET /metrics` beantwortet und, wenn ihm mit `--urdf` ein URDF gegeben wird, `POST /fk`, `/ik`, `/check-trajectory` und `/inverse-dynamics` für diesen Roboter.
+**HYDRA-UMC-PHYSICS-REPLICA** ist das Kinematikmodul des digitalen Zwillings: Es liest einen URDF-Baum, berechnet die Pose jedes Gelenks (Vorwärtskinematik), prüft Gelenkstellungen gegen ihre Grenzen und schätzt die Gelenkmomente aus den Trägheitsdaten (inverse Dynamik). Es simuliert weder Kontakt noch Reibung noch eine Starrkörperwelt. Der optionale Befehl `serve` startet einen kleinen HTTP-Listener (aus, solange er nicht verlangt wird, standardmäßig nur Loopback, Token optional), der `GET /health` und `GET /metrics` (letzteres nur, wenn der Abschnitt `metrics` der Konfigurationsdatei es öffnet) beantwortet und, wenn ihm mit `--urdf` ein URDF gegeben wird, `POST /fk`, `/ik`, `/check-trajectory` und `/inverse-dynamics` für diesen Roboter.
 
 ## 🏛️ Architektur
 

@@ -85,7 +85,7 @@ GPL-3.0-or-later - see LICENSE
 
 ## 🧩 HYDRA-UMC での役割
 
-**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF のツリーを読み、各関節の姿勢を計算し（順運動学）、関節の位置を制限に照らして検証し、慣性データから関節トルクを推定します（逆動力学）。接触、摩擦、剛体の世界はシミュレートしません。 任意の `serve` コマンドは小さな HTTP リスナーを起動します（指定しない限り無効、既定ではループバックのみ、トークンは任意）。`GET /health` と `GET /metrics` に応答し、`--urdf` で URDF を渡した場合は、そのロボットについて `POST /fk`、`/ik`、`/check-trajectory`、`/inverse-dynamics` にも応答します。
+**HYDRA-UMC-PHYSICS-REPLICA** はデジタルツインの運動学モジュールです。URDF のツリーを読み、各関節の姿勢を計算し（順運動学）、関節の位置を制限に照らして検証し、慣性データから関節トルクを推定します（逆動力学）。接触、摩擦、剛体の世界はシミュレートしません。 任意の `serve` コマンドは小さな HTTP リスナーを起動します（指定しない限り無効、既定ではループバックのみ、トークンは任意）。`GET /health` と `GET /metrics`（後者は設定ファイルの `metrics` セクションで有効にした場合のみ） に応答し、`--urdf` で URDF を渡した場合は、そのロボットについて `POST /fk`、`/ik`、`/check-trajectory`、`/inverse-dynamics` にも応答します。
 
 ## 🏛️ アーキテクチャ
 

@@ -85,7 +85,7 @@ Units are those of URDF (metres and radians). `fk` prints the position of each j
 
 ## 🧩 Role in HYDRA-UMC
 
-**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the digital twin: it reads a URDF tree, computes the pose of every joint (forward kinematics), checks joint positions against their limits and estimates joint torques from the inertial data (inverse dynamics). It does not simulate contact, friction or a rigid-body world. The optional `serve` command starts a small HTTP listener (off unless asked for, loopback only by default, token optional) that answers `GET /health` and `GET /metrics` and, when given a URDF with `--urdf`, `POST /fk`, `/ik`, `/check-trajectory` and `/inverse-dynamics` for that robot.
+**HYDRA-UMC-PHYSICS-REPLICA** is the kinematics module of the digital twin: it reads a URDF tree, computes the pose of every joint (forward kinematics), checks joint positions against their limits and estimates joint torques from the inertial data (inverse dynamics). It does not simulate contact, friction or a rigid-body world. The optional `serve` command starts a small HTTP listener (off unless asked for, loopback only by default, token optional) that answers `GET /health` and `GET /metrics` (the latter only when the `metrics` section of the configuration file opens it) and, when given a URDF with `--urdf`, `POST /fk`, `/ik`, `/check-trajectory` and `/inverse-dynamics` for that robot.
 
 ## 🏛️ Architecture
 
