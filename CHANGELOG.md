@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.4] - The build test of the repository compiles only on CI or when allowed: for the stacks that compile (rust, go, android, flutter, firmware-c), tools/buildtest.py prints BUILDTEST=SKIPPED with exit status 2 on a plain PC, never a... (and 2 more changes)
+
 - **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
 
 - **`POST /ik` is off by default and bounded in time:** the `ik` section of the configuration file gains `enabled` (`false` by default; closed, the route answers `404` with `code: ik_off`, in the eight languages) and `max_millis` (the longest an inverse-kinematics request may iterate, default 2000 ms). The answer now says through `timed_out` whether the time ended the iteration, so a program that checks a trajectory with it can tell a goal out of reach from a request that ran out of time.
