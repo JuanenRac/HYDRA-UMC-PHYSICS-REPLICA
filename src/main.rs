@@ -873,6 +873,116 @@ fn run_inverse_dynamics(args: &[String]) -> ExitCode {
     }
 }
 
+/// Moves the robot forward in time under given joint torques and gravity (the forward dynamics of `rigidbody`, integrated with the fourth-order Runge-Kutta rule).
+fn run_simulate(args: &[String]) -> ExitCode {
+    let Some(urdf_path) = find_flag(args, "--urdf") else {
+        return fail("simulate", "missing required --urdf PATH");
+    };
+    let model = match load_model(&urdf_path) {
+        Ok(m) => m,
+        Err(e) => return fail("simulate", e),
+    };
+    let names = rigidbody::free_joint_names(&model);
+    let mut maps = Vec::new();
+    for flag in ["--joints", "--velocities", "--torques"] {
+        let map = match parse_joint_positions(&find_flag(args, flag).unwrap_or_default()) {
+            Ok(m) => m,
+            Err(e) => return fail("simulate", format!("invalid {flag} value: {e}")),
+        };
+        if let Err(e) = check_joint_names(&model.chain, &map) {
+            return fail("simulate", format!("{flag}: {e}"));
+        }
+        if let Some(bad) = map.keys().find(|k| !names.contains(k)) {
+            return fail(
+                "simulate",
+                format!("{flag}: joint '{bad}' does not move by itself (fixed or following another joint)"),
+            );
+        }
+        maps.push(map);
+    }
+    let number = |flag: &str, default: f64| -> Result<f64, String> {
+        match find_flag(args, flag) {
+            None => Ok(default),
+            Some(text) => match text.trim().parse::<f64>() {
+                Ok(v) if v.is_finite() && v > 0.0 => Ok(v),
+                _ => Err(format!("{flag} wants a finite number above zero")),
+            },
+        }
+    };
+    let duration = match number("--duration", 1.0) {
+        Ok(v) => v,
+        Err(e) => return fail("simulate", e),
+    };
+    let dt = match number("--dt", 0.001) {
+        Ok(v) => v,
+        Err(e) => return fail("simulate", e),
+    };
+    let steps_f = (duration / dt).round();
+    if dt > duration || !(1.0..=1_000_000.0).contains(&steps_f) {
+        return fail(
+            "simulate",
+            "--duration / --dt must give between 1 and 1000000 steps",
+        );
+    }
+    let steps = steps_f as usize;
+    let every = match find_flag(args, "--every") {
+        None => (steps / 10).max(1),
+        Some(text) => match text.trim().parse::<usize>() {
+            Ok(v) if v > 0 => v,
+            _ => return fail("simulate", "--every wants a whole number above zero"),
+        },
+    };
+    let options = dynamics::Options {
+        allow_missing_inertial: has_flag(args, "--allow-missing-inertial"),
+        ..dynamics::Options::default()
+    };
+    let mut q: Vec<f64> = names
+        .iter()
+        .map(|n| maps[0].get(n).copied().unwrap_or(0.0))
+        .collect();
+    let mut qd: Vec<f64> = names
+        .iter()
+        .map(|n| maps[1].get(n).copied().unwrap_or(0.0))
+        .collect();
+    let tau: Vec<f64> = names
+        .iter()
+        .map(|n| maps[2].get(n).copied().unwrap_or(0.0))
+        .collect();
+    let mut samples = vec![(0.0_f64, q.clone(), qd.clone())];
+    for step in 1..=steps {
+        if let Err(e) = rigidbody::rk4_step(&model, &names, &mut q, &mut qd, &tau, dt, &options) {
+            return fail("simulate", e);
+        }
+        if q.iter().chain(qd.iter()).any(|v| !v.is_finite()) {
+            return fail(
+                "simulate",
+                "the state stopped being finite: use a smaller --dt",
+            );
+        }
+        if step % every == 0 || step == steps {
+            samples.push((step as f64 * dt, q.clone(), qd.clone()));
+        }
+    }
+    eprintln!("note: rigid-body model from the <inertial> blocks and gravity only (no friction, no motor dynamics, no contact with the robot); an estimate, not tried with a real robot");
+    if has_flag(args, "--json") {
+        let rows: Vec<serde_json::Value> = samples
+            .iter()
+            .map(|(t, q, qd)| serde_json::json!({"t_s": t, "positions": q, "velocities": qd}))
+            .collect();
+        println!(
+            "{}",
+            serde_json::json!({"joints": names, "dt_s": dt, "steps": steps, "samples": rows})
+        );
+    } else {
+        println!("t_s {}", names.join(" "));
+        for (t, q, _) in &samples {
+            let cells: Vec<String> = q.iter().map(|v| format!("{v:.9}")).collect();
+            println!("{t:.6} {}", cells.join(" "));
+        }
+    }
+    ExitCode::SUCCESS
+}
+
 /// The URDF written as MJCF (to stdout, or to `--out PATH`); what could not be written is listed on stderr.
 fn run_mjcf(args: &[String]) -> ExitCode {
     let Some(urdf_path) = find_flag(args, "--urdf") else {
@@ -1060,6 +1170,7 @@ fn main() -> ExitCode {
         Some("self-collision") => run_self_collision(&args[1..]),
         Some("capsules") => run_capsules(&args[1..]),
         Some("inverse-dynamics") => run_inverse_dynamics(&args[1..]),
+        Some("simulate") => run_simulate(&args[1..]),
         Some("mjcf") => run_mjcf(&args[1..]),
         Some("mujoco-check") => run_mujoco_check(&args[1..]),
         Some("mujoco-step") => run_mujoco_step(&args[1..]),

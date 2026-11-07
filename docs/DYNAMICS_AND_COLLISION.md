@@ -59,6 +59,18 @@ It is tested against the closed forms of a pendulum, of a vertical slide and of 
 (the power of the joints equals the rate of change of the kinetic and potential energy) on a three-dimensional arm with tilted axes, offset
 and rotated inertia, a prismatic joint and a follower; and, with the optional bridge below, against the inverse dynamics of MuJoCo itself.
 
+## Moving the robot forward in time (`simulate`)
+
+```
+hydra-umc-physics-replica simulate --urdf ROBOT.urdf [--joints "..."] [--velocities "..."] [--torques "..."]     [--duration S] [--dt S] [--every N] [--allow-missing-inertial] [--json]
+```
+
+The forward dynamics of the `rigidbody` module: the joint accelerations for the torques given (held constant), integrated with the fourth-order
+Runge-Kutta rule for `--duration` seconds (1 by default) in steps of `--dt` (0.001 by default, at most one million steps). It prints the position
+of each free joint every `--every` steps (a tenth of the run by default) as a table, or as JSON with positions and speeds. Only joints that move by
+themselves can be given; the ones that follow another joint move with it. The model has the `<inertial>` blocks and gravity and nothing else (no
+friction, no motor dynamics, no contact with the robot): a comparison with a real arm is what turns it into more than a simulation.
+
 ## MuJoCo (`mjcf`, and the optional bridge)
 
 ```
