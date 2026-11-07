@@ -27,6 +27,7 @@ mod messages;
 mod mjcf;
 #[cfg(feature = "mujoco")]
 mod mujoco_bridge;
+mod rigidbody;
 mod selfcollision;
 mod server;
 mod service_api;

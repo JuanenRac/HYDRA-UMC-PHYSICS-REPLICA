@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A rigid-body engine for the hardware-in-the-loop bench:** the new module `rigidbody` gives the forward dynamics of a robot (the joint accelerations for given torques, from the same Newton-Euler pass as the inverse dynamics) with a fourth-order Runge-Kutta step, and a sphere under gravity that falls, bounces and rests on a ground plane (the step is split at the exact instant of impact; restitution and a Coulomb impulse act on the impact; a slow bounce comes to rest and slides to a stop). It is checked against closed forms: the period and the energy of a pendulum, the equations of the planar two-link arm, free fall, the height and the instant of the bounces, the loss of sideways speed of a frictional impact and the stopping distance of a slide. It models no contact between bodies or with a link of the robot, no spin of the ball, no joint friction or motor dynamics; every number is the output of a model, not a measurement of a robot.
+
 ## [0.1.4] - The build test of the repository compiles only on CI or when allowed: for the stacks that compile (rust, go, android, flutter, firmware-c), tools/buildtest.py prints BUILDTEST=SKIPPED with exit status 2 on a plain PC, never a... (and 2 more changes)
 
 - **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
