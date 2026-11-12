@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.4` |
 | Maturity | Functional |
-| Tests | 187 (`cargo test`) |
+| Tests | 226 (`cargo test`) |
 | Stack | Rust / roxmltree / URDF forward kinematics / Inverse dynamics (RNEA) / Capsule self-collision |
 | On real hardware | Not yet: no run on real hardware is recorded for this version |
 
@@ -51,7 +51,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 187 automated tests, run on every change |
+| Tests | 🟢 | 226 automated tests, run on every change |
 | Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
 | Integration | 🟠 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
 | Deployment | 🟠 | Published as a release; installing it on a clean machine is documented but not recorded |
