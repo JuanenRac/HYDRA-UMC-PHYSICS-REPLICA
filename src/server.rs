@@ -507,3 +507,7 @@ mod tests {
             .is_none());
     }
 }
+
+#[cfg(test)]
+#[path = "server_tests.rs"]
+mod server_tests;

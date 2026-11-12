@@ -18,6 +18,8 @@
 mod collision;
 #[cfg(test)]
 mod corpus;
+#[cfg(test)]
+mod display_tests;
 mod dynamics;
 mod jacobian;
 mod kinematics;
