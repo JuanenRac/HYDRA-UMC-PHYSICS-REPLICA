@@ -107,3 +107,57 @@ fn fk_can_print_the_full_pose_as_json() {
         "{plain}"
     );
 }
+
+#[test]
+fn fk_precision_changes_the_decimals_of_both_outputs() {
+    let (code, plain, stderr) = run(&["fk", "--joints", "elbow=0,wrist=0", "--precision", "2"]);
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(plain.contains("wrist: x=1.00 y=0.00 z=0.00"), "{plain}");
+    let (code, json, stderr) = run(&[
+        "fk",
+        "--joints",
+        "elbow=0,wrist=0",
+        "--json",
+        "--precision",
+        "3",
+    ]);
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(json.contains("\"x\":1.000,\"y\":0.000"), "{json}");
+    for bad in ["13", "-1", "many"] {
+        let (code, _, stderr) = run(&["fk", "--joints", "elbow=0,wrist=0", "--precision", bad]);
+        assert_eq!(code, Some(2), "{bad}");
+        assert!(stderr.contains("--precision"), "{stderr}");
+    }
+}
+
+#[test]
+fn fk_tcp_offset_adds_the_tool_centre_point_after_the_last_joint() {
+    let (code, stdout, stderr) = run(&[
+        "fk",
+        "--joints",
+        "elbow=1.5707963267948966,wrist=0",
+        "--tcp-offset",
+        "0.5,0,0",
+    ]);
+    assert_eq!(code, Some(0), "{stderr}");
+    // half a metre further along the wrist's x, which points along the world y after the elbow turn
+    assert!(
+        stdout.contains("tcp: x=0.000000 y=1.500000 z=0.000000"),
+        "{stdout}"
+    );
+    let (code, json, _) = run(&[
+        "fk",
+        "--joints",
+        "elbow=0,wrist=0",
+        "--tcp-offset",
+        "0,0,0.25",
+        "--json",
+    ]);
+    assert_eq!(code, Some(0));
+    assert!(json.contains("\"joint\":\"tcp\""), "{json}");
+    for bad in ["1,2", "a,b,c", "1,2,inf"] {
+        let (code, _, stderr) = run(&["fk", "--joints", "elbow=0,wrist=0", "--tcp-offset", bad]);
+        assert_eq!(code, Some(2), "{bad}");
+        assert!(stderr.contains("--tcp-offset"), "{stderr}");
+    }
+}

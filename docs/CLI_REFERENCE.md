@@ -57,6 +57,8 @@ URDF forward kinematics, joint-limit validation and inverse dynamics for kinemat
 `{"joint", "position": {x, y, z}, "quaternion": {w, x, y, z}}` with nine decimals; the rotation is a unit
 quaternion with `w >= 0`.
 
+Poses are in the frame of the URDF root link. `--precision N` (0 to 12) sets the decimals of both outputs (6 for text and 9 for JSON by default). `--tcp-offset X,Y,Z` (metres, in the frame of the last joint) appends a pose called `tcp`, the tool centre point.
+
 ## Fixture used below
 
 None of these examples needs real hardware, but they do need a real URDF

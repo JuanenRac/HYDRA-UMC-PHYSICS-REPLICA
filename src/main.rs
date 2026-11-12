@@ -123,26 +123,92 @@ fn json_escape(text: &str) -> String {
 }
 
 /// One joint's pose as a JSON object: position in metres and the rotation as
-/// a unit quaternion (w >= 0).
-fn pose_json(name: &str, transform: &transform::Mat4) -> String {
+/// a unit quaternion (w >= 0), both in the frame of the URDF root link.
+fn pose_json(name: &str, transform: &transform::Mat4, precision: usize) -> String {
     let p = transform.translation_part();
     let (w, x, y, z) = transform.quaternion();
     format!(
-        "{{\"joint\":\"{}\",\"position\":{{\"x\":{:.9},\"y\":{:.9},\"z\":{:.9}}},\"quaternion\":{{\"w\":{:.9},\"x\":{:.9},\"y\":{:.9},\"z\":{:.9}}}}}",
-        json_escape(name), p.x, p.y, p.z, w, x, y, z
+        "{{\"joint\":\"{}\",\"position\":{{\"x\":{:.d$},\"y\":{:.d$},\"z\":{:.d$}}},\"quaternion\":{{\"w\":{:.d$},\"x\":{:.d$},\"y\":{:.d$},\"z\":{:.d$}}}}}",
+        json_escape(name), p.x, p.y, p.z, w, x, y, z, d = precision
     )
 }
 
-fn print_poses(result: &[(String, transform::Mat4)], json: bool) {
+/// `--precision N` (0 to 12 decimals); the defaults are the ones the output always had: 6 for text, 9 for JSON.
+fn parse_precision(args: &[String], default: usize) -> Result<usize, String> {
+    match find_flag(args, "--precision") {
+        None => Ok(default),
+        Some(text) => match text.parse::<usize>() {
+            Ok(n) if n <= 12 => Ok(n),
+            _ => Err(format!(
+                "--precision must be a whole number from 0 to 12, not '{text}'"
+            )),
+        },
+    }
+}
+
+/// `--tcp-offset X,Y,Z` (metres, in the frame of the last joint): adds a pose called `tcp` after the last joint, the tool centre point.
+fn with_tcp(
+    args: &[String],
+    mut result: Vec<(String, transform::Mat4)>,
+) -> Result<Vec<(String, transform::Mat4)>, String> {
+    let Some(text) = find_flag(args, "--tcp-offset") else {
+        return Ok(result);
+    };
+    let parts: Vec<f64> = text
+        .split(',')
+        .map(|v| v.trim().parse::<f64>().ok().filter(|n| n.is_finite()))
+        .collect::<Option<Vec<f64>>>()
+        .ok_or_else(|| format!("--tcp-offset must be three finite numbers X,Y,Z, not '{text}'"))?;
+    if parts.len() != 3 {
+        return Err(format!(
+            "--tcp-offset must be three finite numbers X,Y,Z, not '{text}'"
+        ));
+    }
+    let Some((_, last)) = result.last() else {
+        return Err("--tcp-offset needs a model with at least one joint".to_string());
+    };
+    let tcp = last.mul(&transform::Mat4::translation(transform::Vec3::new(
+        parts[0], parts[1], parts[2],
+    )));
+    result.push(("tcp".to_string(), tcp));
+    Ok(result)
+}
+
+fn print_poses(args: &[String], result: Vec<(String, transform::Mat4)>) -> ExitCode {
+    let json = has_flag(args, "--json");
+    let precision = match parse_precision(args, if json { 9 } else { 6 }) {
+        Ok(n) => n,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::from(2);
+        }
+    };
+    let result = match with_tcp(args, result) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::from(2);
+        }
+    };
     if json {
-        let items: Vec<String> = result.iter().map(|(n, t)| pose_json(n, t)).collect();
+        let items: Vec<String> = result
+            .iter()
+            .map(|(n, t)| pose_json(n, t, precision))
+            .collect();
         println!("[{}]", items.join(","));
     } else {
-        for (name, transform) in result {
+        for (name, transform) in &result {
             let p = transform.translation_part();
-            println!("{name}: x={:.6} y={:.6} z={:.6}", p.x, p.y, p.z);
+            println!(
+                "{name}: x={:.d$} y={:.d$} z={:.d$}",
+                p.x,
+                p.y,
+                p.z,
+                d = precision
+            );
         }
     }
+    ExitCode::SUCCESS
 }
 
 fn has_flag(args: &[String], flag: &str) -> bool {
@@ -228,8 +294,7 @@ fn run_fk(args: &[String]) -> ExitCode {
     match kinematics::forward_kinematics_model(&model, &positions) {
         Ok(result) => {
             eprintln!("{ESTIMATE_NOTICE}");
-            print_poses(&result, has_flag(args, "--json"));
-            ExitCode::SUCCESS
+            print_poses(args, result)
         }
         Err(e) => {
             eprintln!("fk: {e}");
@@ -268,8 +333,7 @@ fn run_fk_checked(args: &[String]) -> ExitCode {
     match kinematics::forward_kinematics_checked_model(&model, &positions) {
         Ok(result) => {
             eprintln!("{ESTIMATE_NOTICE}");
-            print_poses(&result, has_flag(args, "--json"));
-            ExitCode::SUCCESS
+            print_poses(args, result)
         }
         Err(kinematics::CheckedKinematicsError::MissingLimits(joints)) => {
             eprintln!(
