@@ -83,7 +83,7 @@ same sentence in the language of the request. A bad request has `detail` with th
 { "joints": { "shoulder": 0.5, "elbow": -0.2 }, "checked": false }
 ```
 
-Answers `{"poses": [{"joint", "position": {x, y, z}, "quaternion": {w, x, y, z}}, ...], "checked", "note"}`: the world pose of the frame
+Answers `{"schema_version": "1.0", "frame": "base", "poses": [{"joint", "position": {x, y, z}, "quaternion": {w, x, y, z}}, ...], "checked", "note"}` (the `JointPoses` contract of the SDK; `frame` is the root link of the model): the world pose of the frame
 of every joint, in metres, with the rotation as a unit quaternion (`w >= 0`). `joints` names every joint that moves by itself; a joint
 that follows another (`<mimic>`) is derived and a position given for it is an error. With `"checked": true` a position outside the
 `<limit>` of its joint is refused with `422` and the pose is not computed.

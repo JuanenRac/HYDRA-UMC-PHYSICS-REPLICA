@@ -337,6 +337,8 @@ fn route_fk(model: &Model, body: &Value) -> Result<Value, ApiError> {
         kinematics::forward_kinematics_model(model, &joints).map_err(|e| bad(e.to_string()))?
     };
     Ok(json!({
+        "schema_version": "1.0",
+        "frame": "base",
         "poses": poses.iter().map(|(n, m)| pose_json(n, m)).collect::<Vec<_>>(),
         "checked": checked,
         "note": NOTE,
@@ -648,6 +650,9 @@ mod tests {
             &ctx,
         );
         assert_eq!(status, 200, "{v}");
+        // the shape of the JointPoses contract of the SDK: a version, the frame, and the poses from the root to the tip
+        assert_eq!(v["schema_version"], "1.0");
+        assert_eq!(v["frame"], "base");
         let tip = v["poses"]
             .as_array()
             .unwrap()

@@ -81,6 +81,59 @@ fn a_joint_given_twice_is_refused() {
 }
 
 #[test]
+fn fk_envelope_prints_the_shared_shape_of_the_sdk() {
+    let (code, stdout, stderr) = run(&[
+        "fk",
+        "--joints",
+        "elbow=1.5707963267948966,wrist=0",
+        "--envelope",
+    ]);
+    assert_eq!(code, Some(0), "{stderr}");
+    // an object with the version, the frame and the poses from the root to the tip (the JointPoses contract), on one line
+    assert!(
+        stdout.starts_with("{\"schema_version\":\"1.0\",\"frame\":\"base\",\"poses\":[{\"joint\":"),
+        "{stdout}"
+    );
+    assert!(stdout.trim_end().ends_with("}]}"), "{stdout}");
+    assert_eq!(stdout.trim_end().lines().count(), 1, "{stdout}");
+    // the same poses as --json, only wrapped (nine decimals as well)
+    let (_, array, _) = run(&[
+        "fk",
+        "--joints",
+        "elbow=1.5707963267948966,wrist=0",
+        "--json",
+    ]);
+    assert!(
+        stdout.contains(
+            array
+                .trim_end()
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+        ),
+        "{stdout}"
+    );
+    // --precision and --tcp-offset work with it, and the tool centre point comes last
+    let (code, tcp, stderr) = run(&[
+        "fk",
+        "--joints",
+        "elbow=0,wrist=0",
+        "--envelope",
+        "--precision",
+        "3",
+        "--tcp-offset",
+        "0.1,0,0",
+    ]);
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(
+        tcp.contains("\"joint\":\"tcp\",\"position\":{\"x\":1.100"),
+        "{tcp}"
+    );
+    // without the flag the output is unchanged
+    let (_, plain, _) = run(&["fk", "--joints", "elbow=0,wrist=0", "--json"]);
+    assert!(plain.starts_with('['), "{plain}");
+}
+
+#[test]
 fn fk_can_print_the_full_pose_as_json() {
     let (code, stdout, stderr) = run(&[
         "fk",

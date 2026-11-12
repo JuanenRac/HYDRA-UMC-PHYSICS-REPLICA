@@ -175,7 +175,8 @@ fn with_tcp(
 }
 
 fn print_poses(args: &[String], result: Vec<(String, transform::Mat4)>) -> ExitCode {
-    let json = has_flag(args, "--json");
+    let envelope = has_flag(args, "--envelope");
+    let json = has_flag(args, "--json") || envelope;
     let precision = match parse_precision(args, if json { 9 } else { 6 }) {
         Ok(n) => n,
         Err(e) => {
@@ -195,7 +196,15 @@ fn print_poses(args: &[String], result: Vec<(String, transform::Mat4)>) -> ExitC
             .iter()
             .map(|(n, t)| pose_json(n, t, precision))
             .collect();
-        println!("[{}]", items.join(","));
+        if has_flag(args, "--envelope") {
+            // the JointPoses contract of the SDK: a version, the frame of the poses and the poses from the root to the tip
+            println!(
+                "{{\"schema_version\":\"1.0\",\"frame\":\"base\",\"poses\":[{}]}}",
+                items.join(",")
+            );
+        } else {
+            println!("[{}]", items.join(","));
+        }
     } else {
         for (name, transform) in &result {
             let p = transform.translation_part();
