@@ -87,6 +87,8 @@ Les unités sont celles d'URDF (mètres et radians). `fk` affiche la position de
 
 **HYDRA-UMC-PHYSICS-REPLICA** est le module de cinématique du jumeau numérique : il lit un arbre URDF, calcule la pose de chaque articulation (cinématique directe), vérifie les positions des articulations par rapport à leurs limites et estime les couples articulaires à partir des données d'inertie (dynamique inverse). Il ne simule ni contact, ni frottement, ni monde de corps rigides. La commande facultative `serve` démarre un petit serveur HTTP (désactivé sauf demande, en loopback seulement par défaut, jeton facultatif) qui répond à `GET /health` et `GET /metrics` (ce dernier seulement quand la section `metrics` du fichier de configuration l'ouvre) et, si on lui donne un URDF avec `--urdf`, à `POST /fk`, `/ik`, `/check-trajectory` et `/inverse-dynamics` pour ce robot.
 
+> **Plateforme :** là où ce README dit CM5, il s'agit du banc pilote qui fonctionne aujourd'hui ; la plateforme visée par HYDRA-UMC est un NVIDIA Jetson Orin NX 16 Go, une conception ni construite ni testée.
+
 ## 🏛️ Architecture
 
 <p align="center">

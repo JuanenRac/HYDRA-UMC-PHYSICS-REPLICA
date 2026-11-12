@@ -87,6 +87,8 @@ GPL-3.0-or-later - see LICENSE
 
 **HYDRA-UMC-PHYSICS-REPLICA** 是数字孪生的运动学模块：读取 URDF 树，计算每个关节的位姿（正向运动学），对照限位检查关节位置，并根据惯性数据估算关节力矩（逆动力学）。它不模拟接触、摩擦或刚体世界。 可选的 `serve` 命令会启动一个小型 HTTP 监听器（不指定则不启动，默认仅回环地址，令牌可选），响应 `GET /health` 和 `GET /metrics`（后者仅在配置文件的 `metrics` 部分启用时可用）；若用 `--urdf` 给定 URDF，还会针对该机器人响应 `POST /fk`、`/ik`、`/check-trajectory` 和 `/inverse-dynamics`。
 
+> **平台：** 本 README 中的 CM5 指的是目前正在运行的试验台；HYDRA-UMC 的目标平台是 NVIDIA Jetson Orin NX 16 GB，这是尚未制造或测试的设计。
+
 ## 🏛️ 架构
 
 <p align="center">
