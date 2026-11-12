@@ -226,7 +226,7 @@ Does this short list of states bring the robot into a protected zone, or into it
 capsules          --urdf ROBOT.urdf [--config COLLISION.json]
 self-collision    --urdf ROBOT.urdf --trajectory STATES.json [--config COLLISION.json] [--json]
 inverse-dynamics  --urdf ROBOT.urdf --joints "..." --velocities "..." --accelerations "..." [--gravity X,Y,Z] [--allow-missing-inertial] [--json]
-simulate          --urdf ROBOT.urdf [--joints "..."] [--velocities "..."] [--torques "..."] [--duration S] [--dt S] [--every N] [--allow-missing-inertial] [--json]
+simulate          --urdf ROBOT.urdf [--joints "..."] [--velocities "..."] [--torques "..."] [--targets "..." --kp N|"..." [--kd N|"..."] --max-torque N|"..."] [--duration S] [--dt S] [--every N] [--allow-missing-inertial] [--json]
 mjcf              --urdf ROBOT.urdf [--out ROBOT.xml]
 check-trajectory  --urdf ROBOT.urdf --samples SAMPLES.json [--config SERVICE.json]
 mujoco-check      --urdf ROBOT.urdf --joints "..." --velocities "..." --accelerations "..."   (build with --features mujoco)

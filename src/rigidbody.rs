@@ -122,6 +122,12 @@ pub fn forward_accelerations(
     solve(mass, rhs)
 }
 
+/// The torque of a position motor: `kp * error - kd * speed`, saturated at `max_torque` in both directions (the proportional-derivative law, with the same
+/// saturation, that the twin gives a rigid joint). `error` is the target minus the position.
+pub fn pd_torque(kp: f64, kd: f64, max_torque: f64, error: f64, speed: f64) -> f64 {
+    (kp * error - kd * speed).clamp(-max_torque, max_torque)
+}
+
 /// One step of the classical Runge-Kutta rule for the free joints. `tau` is held constant during the step.
 pub fn rk4_step(
     model: &Model,

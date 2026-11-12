@@ -873,6 +873,110 @@ fn run_inverse_dynamics(args: &[String]) -> ExitCode {
     }
 }
 
+/// The motor law of `simulate`: for each free joint with a target, `clamp(kp * (target - q) - kd * qd, -max_torque, max_torque)` (the same law, with the same
+/// saturation, that the twin gives a rigid joint); a joint without a target gets none. Worked out once per step and held over it.
+struct PdLaw {
+    targets: Vec<Option<f64>>,
+    kp: Vec<f64>,
+    kd: Vec<f64>,
+    max_torque: Vec<f64>,
+}
+
+impl PdLaw {
+    fn torque(&self, i: usize, q: f64, qd: f64) -> f64 {
+        match self.targets[i] {
+            None => 0.0,
+            Some(target) => {
+                rigidbody::pd_torque(self.kp[i], self.kd[i], self.max_torque[i], target - q, qd)
+            }
+        }
+    }
+}
+
+/// One motor number for every free joint, from a flag that is either a single number (all the joints) or `name=value` pairs (only those joints).
+fn per_joint_values(
+    args: &[String],
+    flag: &str,
+    model: &urdf::Model,
+    names: &[String],
+) -> Result<Option<Vec<Option<f64>>>, String> {
+    let Some(text) = find_flag(args, flag) else {
+        return Ok(None);
+    };
+    if let Ok(v) = text.trim().parse::<f64>() {
+        return Ok(Some(vec![Some(v); names.len()]));
+    }
+    let map = parse_joint_positions(&text).map_err(|e| format!("invalid {flag} value: {e}"))?;
+    check_joint_names(&model.chain, &map).map_err(|e| format!("{flag}: {e}"))?;
+    if let Some(bad) = map.keys().find(|k| !names.contains(k)) {
+        return Err(format!(
+            "{flag}: joint '{bad}' does not move by itself (fixed or following another joint)"
+        ));
+    }
+    Ok(Some(names.iter().map(|n| map.get(n).copied()).collect()))
+}
+
+/// The motor law from `--targets`, `--kp`, `--kd` and `--max-torque` (None when no target is given). Every joint with a target needs a stiffness and a top torque
+/// (a motor with no limit is never assumed); the damping is zero when not given. The numbers must be finite, the gains zero or more, the top torque above zero.
+fn parse_pd_flags(
+    args: &[String],
+    model: &urdf::Model,
+    names: &[String],
+) -> Result<Option<PdLaw>, String> {
+    let targets = per_joint_values(args, "--targets", model, names)?;
+    let Some(targets) = targets else {
+        for flag in ["--kp", "--kd", "--max-torque"] {
+            if has_flag(args, flag) {
+                return Err(format!("{flag} needs --targets"));
+            }
+        }
+        return Ok(None);
+    };
+    let kp = per_joint_values(args, "--kp", model, names)?;
+    let kd = per_joint_values(args, "--kd", model, names)?;
+    let max_torque = per_joint_values(args, "--max-torque", model, names)?;
+    let mut law = PdLaw {
+        targets: targets.clone(),
+        kp: vec![0.0; names.len()],
+        kd: vec![0.0; names.len()],
+        max_torque: vec![0.0; names.len()],
+    };
+    for (i, name) in names.iter().enumerate() {
+        let Some(target) = targets[i] else { continue };
+        if !target.is_finite() {
+            return Err(format!(
+                "--targets: the target of '{name}' is not a finite number"
+            ));
+        }
+        let pick = |values: &Option<Vec<Option<f64>>>| values.as_ref().and_then(|v| v[i]);
+        let Some(p) = pick(&kp) else {
+            return Err(format!(
+                "--kp: the joint '{name}' has a target and no stiffness"
+            ));
+        };
+        let Some(m) = pick(&max_torque) else {
+            return Err(format!(
+                "--max-torque: the joint '{name}' has a target and no top torque"
+            ));
+        };
+        let d = pick(&kd).unwrap_or(0.0);
+        if !(p.is_finite() && p >= 0.0) || !(d.is_finite() && d >= 0.0) {
+            return Err(format!(
+                "--kp and --kd want finite numbers of zero or more (joint '{name}')"
+            ));
+        }
+        if !(m.is_finite() && m > 0.0) {
+            return Err(format!(
+                "--max-torque wants a finite number above zero (joint '{name}')"
+            ));
+        }
+        law.kp[i] = p;
+        law.kd[i] = d;
+        law.max_torque[i] = m;
+    }
+    Ok(Some(law))
+}
+
 /// Moves the robot forward in time under given joint torques and gravity (the forward dynamics of `rigidbody`, integrated with the fourth-order Runge-Kutta rule).
 fn run_simulate(args: &[String]) -> ExitCode {
     let Some(urdf_path) = find_flag(args, "--urdf") else {
@@ -936,6 +1040,10 @@ fn run_simulate(args: &[String]) -> ExitCode {
         allow_missing_inertial: has_flag(args, "--allow-missing-inertial"),
         ..dynamics::Options::default()
     };
+    let pd = match parse_pd_flags(args, &model, &names) {
+        Ok(pd) => pd,
+        Err(e) => return fail("simulate", e),
+    };
     let mut q: Vec<f64> = names
         .iter()
         .map(|n| maps[0].get(n).copied().unwrap_or(0.0))
@@ -944,12 +1052,19 @@ fn run_simulate(args: &[String]) -> ExitCode {
         .iter()
         .map(|n| maps[1].get(n).copied().unwrap_or(0.0))
         .collect();
-    let tau: Vec<f64> = names
+    let tau_open: Vec<f64> = names
         .iter()
         .map(|n| maps[2].get(n).copied().unwrap_or(0.0))
         .collect();
+    let mut tau = tau_open.clone();
     let mut samples = vec![(0.0_f64, q.clone(), qd.clone())];
     for step in 1..=steps {
+        // the motor law is worked out once per step, from the state at its start, and held over the step
+        if let Some(pd) = &pd {
+            for (i, t) in tau.iter_mut().enumerate() {
+                *t = tau_open[i] + pd.torque(i, q[i], qd[i]);
+            }
+        }
         if let Err(e) = rigidbody::rk4_step(&model, &names, &mut q, &mut qd, &tau, dt, &options) {
             return fail("simulate", e);
         }
@@ -963,7 +1078,11 @@ fn run_simulate(args: &[String]) -> ExitCode {
             samples.push((step as f64 * dt, q.clone(), qd.clone()));
         }
     }
-    eprintln!("note: rigid-body model from the <inertial> blocks and gravity only (no friction, no motor dynamics, no contact with the robot); an estimate, not tried with a real robot");
+    if pd.is_some() {
+        eprintln!("note: rigid-body model from the <inertial> blocks and gravity, with a saturated proportional-derivative motor law on the joints that have a target (no friction, no motor electrics, no contact with the robot); an estimate, not tried with a real robot");
+    } else {
+        eprintln!("note: rigid-body model from the <inertial> blocks and gravity only (no friction, no motor dynamics, no contact with the robot); an estimate, not tried with a real robot");
+    }
     if has_flag(args, "--json") {
         let rows: Vec<serde_json::Value> = samples
             .iter()

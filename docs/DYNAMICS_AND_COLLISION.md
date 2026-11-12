@@ -62,7 +62,7 @@ and rotated inertia, a prismatic joint and a follower; and, with the optional br
 ## Moving the robot forward in time (`simulate`)
 
 ```
-hydra-umc-physics-replica simulate --urdf ROBOT.urdf [--joints "..."] [--velocities "..."] [--torques "..."]     [--duration S] [--dt S] [--every N] [--allow-missing-inertial] [--json]
+hydra-umc-physics-replica simulate --urdf ROBOT.urdf [--joints "..."] [--velocities "..."] [--torques "..."]     [--targets "..." --kp N|"..." [--kd N|"..."] --max-torque N|"..."] [--duration S] [--dt S] [--every N] [--allow-missing-inertial] [--json]
 ```
 
 The forward dynamics of the `rigidbody` module: the joint accelerations for the torques given (held constant), integrated with the fourth-order
@@ -70,6 +70,12 @@ Runge-Kutta rule for `--duration` seconds (1 by default) in steps of `--dt` (0.0
 of each free joint every `--every` steps (a tenth of the run by default) as a table, or as JSON with positions and speeds. Only joints that move by
 themselves can be given; the ones that follow another joint move with it. The model has the `<inertial>` blocks and gravity and nothing else (no
 friction, no motor dynamics, no contact with the robot): a comparison with a real arm is what turns it into more than a simulation.
+
+With `--targets` (`name=value` pairs, or one number for every free joint) the loop is closed: each joint that has a target gets, on top of any `--torques`,
+the torque `clamp(kp * (target - position) - kd * speed, -max_torque, max_torque)`, the proportional-derivative law with the saturation that the twin gives a rigid
+joint, worked out at the start of every step and held over it. `--kp` and `--max-torque` are required for every joint with a target (a motor with no limit is never
+assumed), `--kd` is zero when not given; each takes one number for all the joints or `name=value` pairs. The gains must be finite and zero or more, the top torque above
+zero; `--kp`, `--kd` or `--max-torque` without `--targets` is an error (exit 2). The twin can call this command once per interval to couple its joints (see its simulation model).
 
 ## MuJoCo (`mjcf`, and the optional bridge)
 
