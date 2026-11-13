@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.1.5] - The JointPoses contract in the forward kinematics, a simulate command with a motor law and a rigid-body engine for the bench
 
 - **README: the platform statement:** a note says that where the README speaks of the CM5 it means the pilot bench that runs today, and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **The pose of every joint has one shared shape (the `JointPoses` contract of the SDK):** `POST /fk` now answers `schema_version` (`1.0`) and `frame` (`base`, the root link of the model) next to `poses`, `checked` and `note` (nothing was taken away), and `fk` and `fk-checked` take `--envelope` (it implies `--json`) to print the same object on one line, from the root to the tip with the tool centre point of `--tcp-offset` last. Without the flag the output is what it was, an array. A consumer such as the digital twin, the path planner or the safety zones can now validate the answer against one schema. 1 test, and the test of `POST /fk` checks the two new fields.
