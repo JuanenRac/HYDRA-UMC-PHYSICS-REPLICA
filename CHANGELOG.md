@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
-- **A simulation bench and a coverage floor on CI:** the workflow `Simulation bench` runs the tests of `src/simulation_bench.rs` over scenarios drawn from a fixed seed: a pendulum let go from 12 states keeps its energy within 1e-5 J over two seconds and a coarser step loses more of it than a finer one, and 40 balls dropped and thrown with random mass, restitution and friction never go below the ground, never gain mechanical energy, come to rest, hit the ground at the instant the height says and bounce back the fraction of the speed the restitution says. The workflow `Coverage` measures the line coverage with `cargo llvm-cov` and fails under a floor. 6 new tests.
+- **A simulation bench and a coverage floor on CI:** the workflow `Simulation bench` runs the tests of `src/simulation_bench.rs` over scenarios drawn from a fixed seed: a pendulum let go from 12 states keeps its energy within 1e-5 J over two seconds and a coarser step loses more of it than a finer one, and 40 balls dropped and thrown with random mass, restitution and friction never go below the ground, never gain mechanical energy, come to rest, hit the ground at the instant the height says and bounce back the fraction of the speed the restitution says. The workflow `Coverage` measures the line coverage with `cargo llvm-cov` and fails under a floor. The tests of `tests/cli_refusals.rs` cover what the 14 commands say and do without a model, with a model that does not exist or is not a robot, and the options `serve` refuses before it listens. 10 new tests.
 
 ## [0.1.5] - Shared pose shape, a motor law in simulate and more tests
 
