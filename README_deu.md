@@ -38,7 +38,7 @@ GPL-3.0-or-later - see LICENSE
 | Reifegrad | Funktionsfähig |
 | Tests | 229 (`cargo test`) |
 | Technik | Rust / roxmltree / URDF forward kinematics / Inverse dynamics (RNEA) / Capsule self-collision |
-| Auf echter Hardware | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+| Auf echter Hardware | Nur simuliert: gegen Emulatoren, Attrappen oder Simulatoren getestet; für diese Version ist kein Lauf auf echter Hardware vermerkt |
 
 **Springe zu:** [Überblick](#-überblick) · [Architektur](#-architektur) · [Schnellstart](#-schnellstart) · [Tests](#-tests) · [Struktur des Repositorys](#-struktur-des-repositorys) · [Verwandte Projekte](#-verwandte-projekte)
 
@@ -52,7 +52,7 @@ Jede Zeile ist ein Teil dieses Repositorys, und die Ampel sagt, wie weit er heut
 |---|---|---|
 | Software | 🟡 | Funktioniert für seinen Hauptzweck; die Ehrlichkeitsprüfung oben nennt, was noch fehlt |
 | Tests | 🟢 | 229 automatische Tests, bei jeder Änderung ausgeführt |
-| Echte Hardware | 🔴 | Noch nicht: für diese Version ist kein Lauf auf echter Hardware vermerkt |
+| Echte Hardware | 🟠 | Nur simuliert: gegen Emulatoren, Attrappen oder Simulatoren getestet; für diese Version ist kein Lauf auf echter Hardware vermerkt |
 | Integration | 🟠 | Seine Nachrichten und Routen werden gegen die gemeinsamen Verträge des SDK geprüft; es lief noch nicht zusammen mit der echten Ausrüstung |
 | Bereitstellung | 🟠 | Als Release veröffentlicht; die Installation auf einem frischen Rechner ist dokumentiert, aber nicht vermerkt |
 | Dokumentation | 🟢 | README in acht Sprachen, bei jeder Änderung gegen das Manifest geprüft |
