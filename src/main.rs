@@ -34,6 +34,8 @@ mod selfcollision;
 mod server;
 mod service_api;
 mod service_metrics;
+#[cfg(test)]
+mod simulation_bench;
 mod trajectory;
 mod transform;
 mod urdf;

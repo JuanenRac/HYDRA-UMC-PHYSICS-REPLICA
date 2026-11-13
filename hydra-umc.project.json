@@ -15,7 +15,7 @@
   ],
   "deployment_target": "cm5",
   "maturity": "functional",
-  "evidence": "host-test",
+  "evidence": "simulator",
   "family": "Digital Twin & Simulation",
   "parent": "HYDRA-UMC-TWIN",
   "build": "cargo build --release",
