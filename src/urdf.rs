@@ -5,13 +5,12 @@
 // =============================================================================
 //! A real, deliberately partial URDF reader.
 //!
-//! Found while auditing the code: this used to
-//! parse `<joint>` elements (`type`, `<origin>`, `<axis>`, `<limit>`) in
-//! raw XML document order and treat that order as the serial chain -
+//! The `<joint>` elements (`type`, `<origin>`, `<axis>`, `<limit>`) are
+//! not taken in raw XML document order as the serial chain -
 //! real URDF makes no such guarantee (a spec-valid file may declare its
 //! `<joint>` elements in any order at all; only each joint's own
-//! `<parent>`/`<child>` link names define the real tree). Fixed: every
-//! joint's real `<parent link="...">`/`<child link="...">` is now parsed
+//! `<parent>`/`<child>` link names define the real tree). Every
+//! joint's real `<parent link="...">`/`<child link="...">` is parsed
 //! and walked from the one real root link (the link that is never any
 //! joint's own child) to produce `Chain.joints` in genuine root-to-leaf
 //! order, regardless of how the source file happens to list them.
@@ -279,11 +278,11 @@ impl std::fmt::Display for UrdfError {
 
 /// Parses a real, space-separated "x y z" attribute value.
 ///
-/// Previously this used to be `.filter_map(|s| s.parse().ok())` - a malformed token
-/// (e.g. "typo" in "typo 1 2 3") was silently DROPPED rather than
+/// A `.filter_map(|s| s.parse().ok())` would be wrong here - a malformed token
+/// (e.g. "typo" in "typo 1 2 3") would be silently DROPPED rather than
 /// failing the parse, so a 4-token value with one garbage token and
-/// three real numbers was silently accepted as if it were the valid
-/// 3-token value. Every token must now parse (`.collect::<Option<Vec<_>>>()`
+/// three real numbers would be silently accepted as if it were the valid
+/// 3-token value. Every token must parse (`.collect::<Option<Vec<_>>>()`
 /// short-circuits to `None` on the first failure), and every parsed
 /// component must be finite - the same non-finite-value class of bug as
 /// the joint limits below, just for a position/orientation component.
@@ -1018,12 +1017,12 @@ mod tests {
         ));
     }
 
-    // the finding's own exact reproduction - a URDF with a
+    // the exact reproduction - a URDF with a
     // malformed `origin xyz` (a real token mixed with garbage) and a
-    // non-finite joint limit used to be silently accepted, producing a
-    // real, wrong pose (an FK check against a 1000-unit rail joint came
-    // back with a position offset by the garbage-adjacent real tokens,
-    // exit code 0) instead of a real, explicit parse error.
+    // non-finite joint limit must not be silently accepted, which would
+    // produce a real, wrong pose (an FK check against a 1000-unit rail
+    // joint coming back with a position offset by the garbage-adjacent
+    // real tokens, exit code 0) instead of a real, explicit parse error.
 
     #[test]
     fn an_origin_xyz_with_one_garbage_token_among_real_numbers_is_rejected_not_silently_truncated()
