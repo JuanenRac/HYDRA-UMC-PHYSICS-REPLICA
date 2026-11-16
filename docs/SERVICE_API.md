@@ -123,11 +123,11 @@ Checks a sampled trajectory (`t` in seconds, strictly increasing) before it is s
 - **self-collision** (`self_collision`: `off`, `auto` or `on`): the capsules built from `<collision>` between the samples.
 
 Answers `{"ok", "complete", "samples", "violations_total", "violations": [{kind, joint, sample, t, value, limit}], "max_velocity",
-"max_acceleration", "self_collision", "notes"}`. `kind` is `position`, `soft_position`, `velocity`, `acceleration` or `effort`.
+"max_acceleration", "self_collision", "notes", "unchecked"}`. `kind` is `position`, `soft_position`, `velocity`, `acceleration` or `effort`.
 `ok` is false when a limit is broken or a contact is predicted. **`complete` is false when a check was switched off or could not run**
-(no `<collision>` shapes, a mesh without a declared radius, fewer than three samples for the effort, a link counted as massless): a
+(a moving joint with no `<limit>` range or no `velocity` limit, a joint with no acceleration limit in the configuration, a trajectory of fewer than three samples when an acceleration limit is set, no `<collision>` shapes, a mesh without a declared radius, fewer than three samples for the effort, a link counted as massless): a
 caller that gates motion on this answer must require `ok` **and** `complete`. Speed and acceleration are finite differences, so a
-spike between two samples is not seen.
+spike between two samples is not seen. `unchecked` lists what no limit covered (`position:<joint>`, `velocity:<joint>`, `acceleration:<joint>`, `acceleration:ends`).
 
 ## `POST /inverse-dynamics`
 

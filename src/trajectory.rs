@@ -258,6 +258,8 @@ pub struct Outcome {
     /// The report of the contact check, or why it was not made.
     pub self_collision: Value,
     pub notes: Vec<String>,
+    /// What no check covered, as `magnitude:joint` (`position`, `velocity`, `acceleration`) or `acceleration:ends`; not empty means `complete` is false.
+    pub unchecked: Vec<String>,
 }
 
 impl Outcome {
@@ -289,6 +291,7 @@ impl Outcome {
             "max_acceleration": sorted(&self.max_acceleration),
             "self_collision": self.self_collision,
             "notes": self.notes,
+            "unchecked": self.unchecked,
             "model": "finite differences of the samples against the limits of the URDF and the configuration; an estimate, not tried with a real robot",
         })
     }
@@ -420,6 +423,35 @@ pub fn check(model: &Model, config: &Config, samples: &[Sample]) -> Result<Outco
     let mut complete = true;
     let mut notes = Vec::new();
 
+    // what no limit covers: a magnitude that was not compared with anything is not within a limit
+    let mut unchecked: Vec<String> = Vec::new();
+    for &i in &moving {
+        let name = &joints[i].name;
+        if joints[i].limit.is_none() && joints[i].joint_type != JointType::Continuous {
+            unchecked.push(format!("position:{name}"));
+        }
+        if model.extras[i].velocity_limit.is_none() {
+            unchecked.push(format!("velocity:{name}"));
+        }
+        if !config.acceleration_limits.contains_key(name)
+            && config.default_acceleration_limit.is_none()
+        {
+            unchecked.push(format!("acceleration:{name}"));
+        }
+    }
+    if n < 3
+        && (config.default_acceleration_limit.is_some() || !config.acceleration_limits.is_empty())
+    {
+        unchecked.push("acceleration:ends".to_string());
+    }
+    if !unchecked.is_empty() {
+        complete = false;
+        notes.push(format!(
+            "no limit was compared for: {}",
+            unchecked.join(", ")
+        ));
+    }
+
     // torques at the interior samples
     if config.check_effort {
         if n < 3 {
@@ -533,6 +565,7 @@ pub fn check(model: &Model, config: &Config, samples: &[Sample]) -> Result<Outco
         max_acceleration,
         self_collision,
         notes,
+        unchecked,
     })
 }
 
@@ -696,6 +729,58 @@ mod tests {
             ..Config::default()
         };
         assert!(check(&mesh, &on, &[at(0.0, 0.0)]).is_err());
+    }
+
+    #[test]
+    fn a_magnitude_with_no_limit_makes_the_answer_incomplete() {
+        let model = parse_urdf_model(ARM).unwrap();
+        let s = samples(&[(0.0, 0.0), (0.1, 0.05), (0.2, 0.15), (0.3, 0.3)]);
+        // the arm declares a position and a velocity limit, but no acceleration limit is configured
+        let out = check(&model, &quiet(), &s).unwrap();
+        assert!(out.ok && !out.complete);
+        assert_eq!(out.unchecked, vec!["acceleration:j".to_string()]);
+        assert_eq!(out.to_json()["unchecked"][0], "acceleration:j");
+        // with one, and three samples, nothing is left but the other checks that were switched off
+        let mut config = quiet();
+        config.default_acceleration_limit = Some(50.0);
+        assert!(check(&model, &config, &s).unwrap().unchecked.is_empty());
+        // two samples have no interior sample: the acceleration is not seen at the ends
+        let two = samples(&[(0.0, 0.0), (0.5, 0.1)]);
+        let out = check(&model, &config, &two).unwrap();
+        assert_eq!(out.unchecked, vec!["acceleration:ends".to_string()]);
+        assert!(!out.complete);
+    }
+
+    #[test]
+    fn a_joint_without_position_or_velocity_limit_is_unchecked_not_within() {
+        let urdf = r#"<robot name="t">
+          <link name="base"/><link name="a"/><link name="b"/>
+          <joint name="bare" type="revolute"><parent link="base"/><child link="a"/><axis xyz="0 0 1"/></joint>
+          <joint name="spin" type="continuous"><parent link="a"/><child link="b"/><axis xyz="0 0 1"/></joint>
+        </robot>"#;
+        let model = parse_urdf_model(urdf).unwrap();
+        let sample = |t: f64, q: f64| Sample {
+            t,
+            joints: HashMap::from([("bare".to_string(), q), ("spin".to_string(), q)]),
+        };
+        let mut config = quiet();
+        config.default_acceleration_limit = Some(5.0);
+        let out = check(
+            &model,
+            &config,
+            &[sample(0.0, 0.0), sample(0.001, 2.0), sample(0.002, 4.0)],
+        )
+        .unwrap();
+        assert!(!out.complete);
+        for expected in ["position:bare", "velocity:bare", "velocity:spin"] {
+            assert!(
+                out.unchecked.contains(&expected.to_string()),
+                "{expected} in {:?}",
+                out.unchecked
+            );
+        }
+        // a continuous joint has no position range by design
+        assert!(!out.unchecked.contains(&"position:spin".to_string()));
     }
 
     #[test]
