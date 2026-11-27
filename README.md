@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Solver-URDF%20FK-blue.svg" alt="Solver">
   <img src="https://img.shields.io/badge/Language-Rust-orange.svg" alt="Language">
   <img src="https://img.shields.io/badge/Stage-Functional%20v0-yellow.svg" alt="Stage">
-  <img src="https://img.shields.io/badge/Tests-242%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-246%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.1.5-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.1.5` |
 | Maturity | Functional |
-| Tests | 242 (`cargo test`) |
+| Tests | 246 (`cargo test`) |
 | Stack | Rust / roxmltree / URDF forward kinematics / Inverse dynamics (RNEA) / Capsule self-collision |
 | On real hardware | Simulated only: tested against emulators, fakes or simulators; no run on real hardware is recorded for this version |
 
@@ -51,7 +51,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check of this README lists what is still missing |
-| Tests | 🟢 | 242 automated tests, run on every change |
+| Tests | 🟢 | 246 automated tests, run on every change |
 | Real hardware | 🟠 | Simulated only: tested against emulators, fakes or simulators; no run on real hardware is recorded for this version |
 | Integration | 🟠 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
 | Deployment | 🟠 | Published as a release; installing it on a clean machine is documented but not recorded |
@@ -140,7 +140,7 @@ cargo test
 
 ## 🧪 Testing
 
-242 automated tests run with `cargo test`. They need no hardware and nothing outside this machine.
+246 automated tests run with `cargo test`. They need no hardware and nothing outside this machine.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 
@@ -150,7 +150,7 @@ Requires the Rust toolchain (`cargo`/`rustc`, install via [rustup](https://rustu
 
 ```bash
 # Linux / macOS
-./build.sh   # `cargo test` (242 tests), then `cargo build --release`
+./build.sh   # `cargo test` (246 tests), then `cargo build --release`
 ./run.sh     # runs target/release/hydra-umc-physics-replica, prints name + version + role
 ```
 
