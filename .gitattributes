@@ -8,3 +8,6 @@
 
 # The shared golden URDF files are compared byte for byte across repositories.
 tests/golden/** -text
+
+# The questionable URDF files both readers of limits are tested on, byte for byte.
+tests/urdf_invalid/** -text

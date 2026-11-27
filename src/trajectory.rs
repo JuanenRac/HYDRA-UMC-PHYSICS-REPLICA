@@ -41,6 +41,8 @@ pub struct Config {
     pub default_acceleration_limit: Option<f64>,
     pub check_soft_limits: bool,
     pub check_effort: bool,
+    /// The trajectory starts and ends at rest: the acceleration that takes is checked at the first and the last sample too.
+    pub assume_rest_at_ends: bool,
     pub gravity: [f64; 3],
     pub allow_missing_inertial: bool,
     pub self_collision: SelfCollisionMode,
@@ -59,6 +61,7 @@ impl Default for Config {
             default_acceleration_limit: None,
             check_soft_limits: true,
             check_effort: false,
+            assume_rest_at_ends: false,
             gravity: dynamics::DEFAULT_GRAVITY,
             allow_missing_inertial: false,
             self_collision: SelfCollisionMode::Auto,
@@ -68,7 +71,7 @@ impl Default for Config {
     }
 }
 
-const CONFIG_FIELDS: [&str; 12] = [
+const CONFIG_FIELDS: [&str; 13] = [
     "position_tolerance",
     "velocity_tolerance",
     "acceleration_tolerance",
@@ -76,6 +79,7 @@ const CONFIG_FIELDS: [&str; 12] = [
     "default_acceleration_limit",
     "check_soft_limits",
     "check_effort",
+    "assume_rest_at_ends",
     "gravity",
     "allow_missing_inertial",
     "self_collision",
@@ -144,6 +148,9 @@ pub fn parse_config(raw: &Value) -> Result<Config, String> {
     }
     if let Some(v) = object.get("check_effort") {
         config.check_effort = boolean(v, "check_effort")?;
+    }
+    if let Some(v) = object.get("assume_rest_at_ends") {
+        config.assume_rest_at_ends = boolean(v, "assume_rest_at_ends")?;
     }
     if let Some(v) = object.get("allow_missing_inertial") {
         config.allow_missing_inertial = boolean(v, "allow_missing_inertial")?;
@@ -419,6 +426,40 @@ pub fn check(model: &Model, config: &Config, samples: &[Sample]) -> Result<Outco
         }
         accel_at[k] = Some(a);
     }
+    // At rest before the first sample and after the last: the speed of an interval belongs to its middle, so reaching it from rest (or
+    // leaving it) takes half of that interval. For a constant acceleration from rest this is the exact value.
+    if config.assume_rest_at_ends && n >= 2 {
+        let ends = [
+            (0, &velocity[0], 0, 1.0),
+            (n - 1, &velocity[n - 2], n - 2, -1.0),
+        ];
+        for (k, speed, interval, sign) in ends {
+            let span = (samples[interval + 1].t - samples[interval].t) / 2.0;
+            for &i in &moving {
+                let name = &joints[i].name;
+                let rate = sign * speed[name] / span;
+                let slot = max_acceleration.entry(name.clone()).or_insert(0.0);
+                *slot = slot.max(rate.abs());
+                let limit = config
+                    .acceleration_limits
+                    .get(name)
+                    .copied()
+                    .or(config.default_acceleration_limit);
+                if let Some(limit) = limit {
+                    if rate.abs() > limit + config.acceleration_tolerance {
+                        record(Violation {
+                            kind: "acceleration",
+                            joint: name.clone(),
+                            sample: k,
+                            t: samples[k].t,
+                            value: rate,
+                            limit,
+                        });
+                    }
+                }
+            }
+        }
+    }
 
     let mut complete = true;
     let mut notes = Vec::new();
@@ -439,7 +480,12 @@ pub fn check(model: &Model, config: &Config, samples: &[Sample]) -> Result<Outco
             unchecked.push(format!("acceleration:{name}"));
         }
     }
+    let ends_checked = config.assume_rest_at_ends && n >= 2;
+    if n < 3 && !ends_checked {
+        notes.push("the acceleration was not checked: it needs at least three samples".to_string());
+    }
     if n < 3
+        && !ends_checked
         && (config.default_acceleration_limit.is_some() || !config.acceleration_limits.is_empty())
     {
         unchecked.push("acceleration:ends".to_string());
@@ -609,6 +655,69 @@ mod tests {
         assert!(out.max_velocity["j"] > 2.0 * 0.5 - 1e-9 && out.max_velocity["j"] < 2.0);
         // switched off means incomplete, never a silent pass
         assert!(!out.complete);
+    }
+
+    #[test]
+    fn a_step_of_two_samples_has_its_acceleration_checked_only_when_it_starts_at_rest() {
+        let model = parse_urdf_model(ARM).unwrap();
+        let mut config = Config {
+            default_acceleration_limit: Some(1.0),
+            ..quiet()
+        };
+        let step = samples(&[(0.0, 0.0), (1.0, 0.5)]);
+        let off = check(&model, &config, &step).unwrap();
+        assert!(off.ok);
+        assert!(off.unchecked.iter().any(|u| u == "acceleration:ends"));
+        assert!(off
+            .notes
+            .iter()
+            .any(|n| n.contains("needs at least three samples")));
+        config.assume_rest_at_ends = true;
+        let on = check(&model, &config, &step).unwrap();
+        // 0.5 rad/s reached in half a second at each end
+        assert!((on.max_acceleration["j"] - 1.0).abs() < 1e-9);
+        assert!(on.unchecked.is_empty(), "{:?}", on.unchecked);
+        config.default_acceleration_limit = Some(0.9);
+        let over = check(&model, &config, &step).unwrap();
+        assert!(!over.ok);
+        let ends: Vec<(usize, f64)> = over
+            .violations
+            .iter()
+            .filter(|v| v.kind == "acceleration")
+            .map(|v| (v.sample, v.value))
+            .collect();
+        assert_eq!(ends.len(), 2, "{ends:?}");
+        assert_eq!((ends[0].0, ends[1].0), (0, 1));
+        assert!(ends[0].1 > 0.0 && ends[1].1 < 0.0);
+    }
+
+    #[test]
+    fn the_ends_of_a_trapezoidal_profile_give_its_ramp() {
+        let model = parse_urdf_model(ARM).unwrap();
+        let config = Config {
+            assume_rest_at_ends: true,
+            ..quiet()
+        };
+        // 0.8 rad/s2 up for 0.5 s, cruise at 0.4 rad/s, 0.8 rad/s2 down for 0.5 s, sampled every 0.25 s
+        let mut points = Vec::new();
+        for k in 0..=8 {
+            let t = f64::from(k) * 0.25;
+            let q = if t <= 0.5 {
+                0.4 * t * t
+            } else if t <= 1.5 {
+                0.1 + 0.4 * (t - 0.5)
+            } else {
+                0.5 + 0.4 * (t - 1.5) - 0.4 * (t - 1.5) * (t - 1.5)
+            };
+            points.push((t, q));
+        }
+        let out = check(&model, &config, &samples(&points)).unwrap();
+        assert!(
+            (out.max_acceleration["j"] - 0.8).abs() < 1e-9,
+            "{:?}",
+            out.max_acceleration
+        );
+        assert!(parse_config(&serde_json::json!({"assume_rest_at_ends": 1})).is_err());
     }
 
     #[test]

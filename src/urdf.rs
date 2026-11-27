@@ -208,6 +208,10 @@ pub enum UrdfError {
         joint: String,
         reason: String,
     },
+    /// The root element is not `<robot>`: the file is not a URDF, whatever joints it holds.
+    NotARobot {
+        root: String,
+    },
     /// A `<safety_controller>` whose soft limits are inverted or lie outside the hard `<limit>` they are meant to sit inside.
     InvalidSoftLimits {
         joint: String,
@@ -268,6 +272,9 @@ impl std::fmt::Display for UrdfError {
             }
             UrdfError::InvalidMimic { joint, reason } => {
                 write!(f, "joint '{joint}' has an invalid <mimic>: {reason}")
+            }
+            UrdfError::NotARobot { root } => {
+                write!(f, "the root element is <{root}>, not <robot>")
             }
             UrdfError::InvalidSoftLimits { joint, reason } => {
                 write!(f, "joint '{joint}' has invalid soft limits: {reason}")
@@ -568,6 +575,11 @@ pub fn parse_urdf_model(xml: &str) -> Result<Model, UrdfError> {
     // <transmission> (ros_control) holds <joint name="..."> elements of its
     // own, without a type, which are not part of the kinematic tree.
     let robot = doc.root_element();
+    if robot.tag_name().name() != "robot" {
+        return Err(UrdfError::NotARobot {
+            root: robot.tag_name().name().to_string(),
+        });
+    }
     let parsed: Vec<ParsedJoint> = robot
         .children()
         .filter(|n| n.has_tag_name("joint"))
@@ -1357,6 +1369,67 @@ mod tests {
                     <limit lower="-1" upper="1" {bad}/></joint></robot>"#
             );
             assert!(parse_urdf_model(&xml).is_err(), "{bad}");
+        }
+    }
+}
+
+/// The questionable files both readers of limits are tested on (`tests/urdf_invalid/`, the same bytes in HYDRA-UMC-HIL-BRIDGE):
+/// `expect.json` says what each of the two does with each file, so a difference between them is written down.
+#[cfg(test)]
+mod shared_cases {
+    use super::*;
+    use serde_json::{json, Value};
+    use std::path::PathBuf;
+
+    /// FNV-1a of the names and bytes of the set. The other repository asserts the same number: change a case in both.
+    const FINGERPRINT: u64 = 0x3792_93c2_746a_6dd7;
+
+    fn folder() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/urdf_invalid")
+    }
+
+    #[test]
+    fn the_shared_files_are_the_agreed_ones() {
+        let mut names: Vec<String> = std::fs::read_dir(folder())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        let mut digest = 0xCBF2_9CE4_8422_2325u64;
+        for name in &names {
+            let bytes = std::fs::read(folder().join(name)).unwrap();
+            for byte in name.bytes().chain(bytes) {
+                digest = (digest ^ u64::from(byte)).wrapping_mul(0x100_0000_01B3);
+            }
+        }
+        assert_eq!(digest, FINGERPRINT, "{names:?}");
+    }
+
+    #[test]
+    fn every_shared_file_is_read_as_the_table_says() {
+        let text = std::fs::read_to_string(folder().join("expect.json")).unwrap();
+        let table: Value = serde_json::from_str(&text).unwrap();
+        let cases = table["cases"].as_array().unwrap();
+        assert!(cases.len() >= 8);
+        for case in cases {
+            let file = case["file"].as_str().unwrap();
+            let xml = std::fs::read_to_string(folder().join(file)).unwrap();
+            let expected = &case["replica"];
+            match parse_urdf_model(&xml) {
+                Err(e) => assert_eq!(expected, &json!({"error": true}), "{file}: {e}"),
+                Ok(model) => {
+                    let limits = expected["limits"].as_object().unwrap_or_else(|| {
+                        panic!("{file} was read but the table says it is refused")
+                    });
+                    assert_eq!(model.chain.joints.len(), limits.len(), "{file}");
+                    for joint in &model.chain.joints {
+                        let wanted = limits[&joint.name]
+                            .as_array()
+                            .map(|a| (a[0].as_f64().unwrap(), a[1].as_f64().unwrap()));
+                        assert_eq!(joint.limit, wanted, "{file}: {}", joint.name);
+                    }
+                }
+            }
         }
     }
 }
