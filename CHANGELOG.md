@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The acceleration at the start and the stop of a trajectory can be checked:** with `assume_rest_at_ends` in the `trajectory` section (off by default) the first and the last sample are checked as leaving and reaching rest, so a step of two samples has its acceleration compared. Without it, fewer than three samples now say in a note that the acceleration was not checked.
+- **A file whose root element is not `<robot>` is refused:** the joints inside another kind of XML were read as a robot.
+- **The two readers of joint limits are tested on one set of questionable files:** `tests/urdf_invalid/`, the same bytes as in HYDRA-UMC-HIL-BRIDGE, with a table that says what each reader does and where they differ on purpose.
 - **`check-trajectory` no longer reports `complete: true` for magnitudes it compared with nothing:** a moving joint with no position range (continuous joints excepted), no `velocity` limit or no acceleration limit in the configuration, and a trajectory of fewer than three samples when an acceleration limit is set, now make `complete` false and are listed in the new `unchecked` field and in the notes. 2 new tests. Callers that gate motion on `ok` and `complete` need the limits declared or configured.
 
 - **Comments describe what the code does, not what it used to do:** the notes in the source and the tests say the present behaviour and the reason for it. Comments only: no behaviour changes.

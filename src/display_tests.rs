@@ -59,6 +59,12 @@ fn every_error_of_the_urdf_says_what_is_wrong_and_where() {
         ),
         (UrdfError::NoRootLink, "could not find a real root link"),
         (
+            UrdfError::NotARobot {
+                root: text("model"),
+            },
+            "the root element is <model>, not <robot>",
+        ),
+        (
             UrdfError::MultipleRootLinks {
                 roots: vec![text("a"), text("b")],
             },

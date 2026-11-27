@@ -116,7 +116,7 @@ Checks a sampled trajectory (`t` in seconds, strictly increasing) before it is s
 
 - **position**: against `<limit lower upper>` (and, with `check_soft_limits`, the `<safety_controller>` range), with `position_tolerance`;
 - **velocity**: the finite difference between consecutive samples against `<limit velocity>`, with `velocity_tolerance`;
-- **acceleration**: the second difference around each interior sample against `acceleration_limits` (or `default_acceleration_limit`).
+- **acceleration**: the second difference around each interior sample against `acceleration_limits` (or `default_acceleration_limit`). With `assume_rest_at_ends` (default `false`) the trajectory is taken to start and end at rest and the first and last samples are checked too, over half of the first and of the last interval.
   The URDF has no acceleration limit, so a joint with none in the configuration is not checked for it;
 - **effort** (with `check_effort`): the joint torques of inverse dynamics (see `DYNAMICS_AND_COLLISION.md`) against `<limit effort>`
   at the interior samples;
