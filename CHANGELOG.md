@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.1.6] - Rest at the ends of a trajectory and stricter robot files
 
 - **The acceleration at the start and the stop of a trajectory can be checked:** with `assume_rest_at_ends` in the `trajectory` section (off by default) the first and the last sample are checked as leaving and reaching rest, so a step of two samples has its acceleration compared. Without it, fewer than three samples now say in a note that the acceleration was not checked.
 - **A file whose root element is not `<robot>` is refused:** the joints inside another kind of XML were read as a robot.
